@@ -1,0 +1,186 @@
+html {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  overflow: hidden;
+  opacity: 0;
+  animation: fadeInPage 0.3s ease-in forwards;
+}
+
+@keyframes fadeInPage {
+  to {
+    opacity: 1;
+  }
+}
+
+body {
+  transition: opacity 0.3s ease-in;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, #f88379, #dcffff, #fffff0, #191970);
+  background-size: 400% 400%;
+  animation: gradientMove 15s ease infinite;
+  z-index: -1;
+  filter: blur(80px);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+h2 {
+  margin: 0;
+}
+
+@keyframes gradientMove {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+#form {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20vw;
+}
+
+.checkboxBrand {
+  display: none;
+}
+
+.checkboxLabel {
+  margin: 1rem;
+  padding: 0rem 2rem;
+  border: 2px solid #011f26;
+  border-radius: 3vh;
+  box-shadow: #413f3f 0.3vw 0.5vh 0 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 130ms ease-in-out;
+  background-color: #E9E9E9;
+}
+
+.checkboxLabelGender {
+  
+  height: 8rem;
+  margin: 1rem;
+  padding: 0rem 2rem;
+  border: 2px solid #011f26;
+  border-radius: 3vh;
+  box-shadow: #413f3f 0.3vw 0.5vh 0 0;
+  width: 8rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 130ms ease-in-out;
+  background-color: #E9E9E9;
+}
+
+.checkboxGender {
+  height: 13vh;
+  margin: 1rem;
+  padding: 0rem 2rem;
+  border: 2px solid #011f26;
+  border-radius: 3vh;
+  box-shadow: #413f3f 0.3vw 0.5vh 0 0;
+  width: 15vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 130ms ease-in-out;
+  background-color: #E9E9E9;
+}
+
+.checkboxGenderInput {
+  display: none;
+}
+
+.saveButton {
+  margin: 1rem;
+  width: 12vh;
+  border-radius: 3vh;
+  box-shadow: #413f3f 0.3vw 0.5vh 0 0;
+  background: #E9E9E9;
+ 
+}
+
+.saveButton:hover {
+  background: #f88379;
+}
+
+.saveButton.clicked {
+  box-shadow: #422800 1px 1px 0 0 !important;
+  transform: translate(2px, 2px) !important;
+  transition: all 150ms ease-in-out;
+}
+
+.checkboxLabel:hover {
+  box-shadow: #422800 1px 1px 0 0;
+  transform: translate(2px, 2px);
+}
+
+.buttonClicked {
+  box-shadow: #422800 1px 1px 0 0 !important;
+  transform: translate(4px, 4px) !important;
+  transition: all 150ms ease-in-out;
+}
+
+.brandButtonClicked {
+  box-shadow: #422800 1px 1px 0 0 !important;
+  transform: translate(2px, 2px) !important;
+  transition: all 150ms ease-in-out;
+}
+
+.brandLogos {
+      width: 15vh;
+}
+
+#buttonsDiv {
+  display: flex;
+}
+
+#userEmailPrefix,
+#name {
+  text-decoration: none;
+  color: #011f26;
+  font-family: "Playwrite CU", sans-serif;
+  text-shadow: 0.3vw 0.3vh #78866b;
+  pointer-events: none;
+  font-size: 4.2vw;
+  font-weight: 600;
+  margin: 0;
+}
+
+#statusMessage {
+  display: none;
+  padding-right: 10rem;
+  text-decoration: none;
+  color: #011f26;
+  font-family: "Playwrite CU", sans-serif;
+  pointer-events: none;
+  font-size: 1.2vw;
+  font-weight: 600;
+  margin-top: 6vh;
+  margin-bottom: 0;
+  width: 45vh;
+}
+
+.genderDiv {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}

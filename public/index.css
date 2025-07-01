@@ -1,0 +1,145 @@
+* {
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-family: "Roboto Slab", "Cabin", sans-serif;
+  background-color: #dcffff;
+  opacity: 0;
+  animation: fadeInPage 0.3s ease-in forwards;
+}
+
+@keyframes fadeInPage {
+  to {
+    opacity: 1;
+  }
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, #f88379, #dcffff, #fffff0, #191970);
+  background-size: 400% 400%;
+  animation: gradientMove 15s ease infinite;
+  z-index: -1;
+  filter: blur(80px);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+@keyframes gradientMove {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+#header {
+  padding-top: calc(8rem + 2vw);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#logoAndName {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+#name {
+  text-decoration: none;
+  color: #011f26;
+  font-family: "Playwrite CU", sans-serif;
+  text-shadow: 0.4vw 0.4vh #78866b;
+  pointer-events: none;
+}
+
+h1 {
+  font-size: 7.2vw;
+  font-weight: 600;
+  margin-top: 3vh;
+  margin-bottom: 0;
+}
+
+#signInSection {
+  padding-top: 8vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#signInButton,
+#emailInput {
+  min-width: 120px;
+  width: 36vw;
+  height: 9vh;
+  background: #f88379;
+  border: 2px solid #011f26;
+  border-radius: 3vh;
+  box-shadow: #393737 0.4vw 0.8vh 0 0;
+  color: #011f26;
+  cursor: pointer;
+  display: inline-block;
+  font-weight: 600;
+  font-size: calc(0.5rem + 0.6vw);
+  text-align: center;
+  text-decoration: none;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  outline: none;
+  overflow: hidden;
+  transition: all 150ms ease-in-out;
+}
+
+#signInButton:hover {
+  background-color: #78866b;
+}
+
+#signInButton:active {
+  box-shadow: #422800 1px 1px 0 0;
+  transform: translate(4px, 4px);
+}
+
+.buttonClicked {
+  box-shadow: #422800 1px 1px 0 0 !important;
+  transform: translate(4px, 4px) !important;
+  transition: all 150ms ease-in-out;
+}
+
+@media (max-width: 768px) {
+  #signInButton,
+  #emailInput {
+    width: 70vw;
+    height: 7vh;
+    font-size: 1rem;
+  }
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 9vh;
+  padding: 2vh 0;
+  font-size: 0.9rem;
+  color: #333;
+  bottom: 2%;
+}
+
+.footerText {
+  font-size: calc(0.5rem + 0.5vw);
+  color: #7393B3;
+}

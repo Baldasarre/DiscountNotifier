@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>E-Posta & Marka Kaydı</title>
+
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playwrite+CU:wght@100..400&family=Roboto+Slab:wght@100..900&family=Cabin:ital,wght@0,400..700;1,400..700&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="user.css" />
+  </head>
+
+  <body>
+
+    <form id="form">
+      <div id="logoAndName">
+       <h1 id="name">Hoşgeldin,</h1>
+       <h1 id="userEmailPrefix">sdadsadsa</h1>
+       <h1 id="statusMessage"></h1>
+       <h2></h2>
+      </div>
+      <div class="genderDiv">
+        <label class="checkboxGender"
+          ><input
+            class="checkboxGenderInput"
+            type="checkbox"
+            name="gender"
+            value="female"
+          />Kadın</label
+        >
+        <label class="checkboxGender"
+          ><input
+            class="checkboxGenderInput"
+            type="checkbox"
+            name="gender"
+            value="male"
+          />Erkek</label
+        >
+      </div>
+      <div id="buttonsDiv">
+             <div>
+        <label class="checkboxLabel"
+          ><input
+            class="checkboxBrand"
+            type="checkbox"
+            name="brands"
+            value="Zara"
+          /><img class="brandLogos" src="/zara.png" alt="Zara"></label
+        >
+        <label class="checkboxLabel"
+          ><input
+            class="checkboxBrand"
+            type="checkbox"
+            name="brands"
+            value="Pull&Bear"
+          /><img class="brandLogos" src="/pb.png" alt="PullBear"></label
+        >
+        <label class="checkboxLabel"
+          ><input
+            class="checkboxBrand"
+            type="checkbox"
+            name="brands"
+            value="Massimo_Dutti"
+          /><img class="brandLogos" src="/Massimo_Dutti.png" alt="MassimoDutti"></label
+        >
+        <label class="checkboxLabel"
+          ><input
+            class="checkboxBrand"
+            type="checkbox"
+            name="brands"
+            value="Oysho"
+          /><img class="brandLogos" src="/oysho.png" alt="Oysho"></label
+        >
+        <label class="checkboxLabel"
+          ><input
+            class="checkboxBrand"
+            type="checkbox"
+            name="brands"
+            value="Stradivarius"
+          /><img class="brandLogos" src="/stradivarius.png" alt="Stradivarius"></label
+        >
+        <label class="checkboxLabel"
+          ><input
+            class="checkboxBrand"
+            type="checkbox"
+            name="brands"
+            value="Bershka"
+          /><img class="brandLogos" src="/bershka.png" alt="Bershka"></label
+        >
+        <label class="checkboxLabel"
+          ><input
+            class="checkboxBrand"
+            type="checkbox"
+            name="brands"
+            value="H&M"
+          /><img class="brandLogos" src="/hm.png" alt="HM"></label
+        >
+      </div>
+      <button id="saveButton" class="saveButton" type="submit">Kaydet</button>
+      </div>
+    </form>
+
+    <script src="user.js"></script>
+  </body>
+</html>
