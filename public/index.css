@@ -45,7 +45,7 @@ body::before {
 }
 
 #header {
-  padding-top: calc(8rem + 2vw);
+  padding-top: 20vh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -124,7 +124,7 @@ h1 {
   #emailInput {
     width: 70vw;
     height: 7vh;
-    font-size: 1rem;
+    font-size: 0.5rem;
   }
 }
 

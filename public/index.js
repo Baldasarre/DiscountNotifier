@@ -77,7 +77,7 @@ emailInput.addEventListener("keydown", async (event) => {
           showMessage("Sunucu hatası: " + result.error);
         }
       } catch (err) {
-        showMessage("Bağlantı hatası!");
+        showErrMessage("Bağlantı hatası!");
       }
 
     } else if (mode === "code") {
@@ -118,9 +118,16 @@ emailInput.addEventListener("keydown", async (event) => {
 });
 
 
-
 function showMessage(msg) {
   emailInput.value = "";
   emailInput.placeholder = msg;
+  emailInput.disabled = false;
   emailInput.blur();
 }
+
+function showErrMessage(msg) {
+  emailInput.value = "";
+  emailInput.placeholder = msg;
+  emailInput.disabled = true; 
+}
+
