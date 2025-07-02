@@ -129,14 +129,19 @@ h1 {
 }
 
 .footer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: absolute;
+  width: -webkit-fill-available;
   margin-top: 9vh;
   padding: 2vh 0;
   font-size: 0.9rem;
   color: #333;
   bottom: 2%;
+}
+
+.footerDiv {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .footerText {
