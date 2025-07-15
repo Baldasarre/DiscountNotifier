@@ -1,10 +1,11 @@
 * {
   padding: 0;
+  margin: 0;
   box-sizing: border-box;
 }
 
 html {
-  font-family: "Roboto Slab", "Cabin", sans-serif;
+  font-family: "Roboto Slab", "Quicksand", "Cabin", sans-serif;
   background-color: #dcffff;
   opacity: 0;
   animation: fadeInPage 0.3s ease-in forwards;
@@ -21,15 +22,16 @@ body::before {
   position: fixed;
   top: 0;
   left: 0;
-  width: 200%;
-  height: 200%;
-  background: linear-gradient(45deg, #f88379, #dcffff, #fffff0, #191970);
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(45deg, white, #DA6C6C, #F4F8D3, #A2AADB, #B9B28A, #574964);
   background-size: 400% 400%;
-  animation: gradientMove 15s ease infinite;
+  animation: gradientMove 35s ease infinite;
   z-index: -1;
-  filter: blur(80px);
+  filter: blur(100px) brightness(1.1);
   opacity: 0.6;
   pointer-events: none;
+  transform: scale(1.4);
 }
 
 @keyframes gradientMove {
@@ -45,7 +47,7 @@ body::before {
 }
 
 #header {
-  padding-top: 20vh;
+  padding-top: 16vh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -82,6 +84,7 @@ h1 {
 
 #signInButton,
 #emailInput {
+  font-family: "Quicksand";
   min-width: 120px;
   width: 36vw;
   height: 9vh;
@@ -89,6 +92,8 @@ h1 {
   border: 2px solid #011f26;
   border-radius: 3vh;
   box-shadow: #393737 0.4vw 0.8vh 0 0;
+  border-top: transparent;
+  border-left: transparent;
   color: #011f26;
   cursor: pointer;
   display: inline-block;
@@ -124,7 +129,16 @@ h1 {
   #emailInput {
     width: 70vw;
     height: 7vh;
-    font-size: 0.5rem;
+    font-size: 0.7rem;
+  }
+
+  h1 {
+    font-size: 16.2vw;
+  }
+
+  #signInButton{
+    border-radius: 2.4vh;
+    box-shadow: #393737 1vw 0.6vh 0 0;
   }
 }
 
@@ -145,6 +159,6 @@ h1 {
 }
 
 .footerText {
-  font-size: calc(0.5rem + 0.5vw);
+  font-size: calc(0.5rem + 0.3vw);
   color: #7393B3;
 }
