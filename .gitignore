@@ -3,4 +3,3 @@ users.json
 node_modules/
 .vscode/
 *.log
-/logo.png

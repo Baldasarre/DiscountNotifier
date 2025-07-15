@@ -75,6 +75,12 @@ h1 {
   margin-bottom: 0;
 }
 
+#logo {
+  width: 40vw;
+  margin-bottom:5vh ;
+  margin-top: 10vh;
+}
+
 #signInSection {
   padding-top: 8vh;
   display: flex;
