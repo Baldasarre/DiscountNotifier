@@ -3,7 +3,9 @@ const saveButton = document.getElementById("saveButton");
 const brandSection = document.getElementById("buttonsDiv");
 const genderButtons = document.querySelectorAll(".checkboxGender");
 const brandCheckboxes = document.querySelectorAll(".checkboxBrand");
-const userPanelMessage = document.getElementById("statusMessage");
+const email = localStorage.getItem("userEmail");
+const prefix = email?.split("@")[0] || "Kullanıcı";
+const welcomeMessage = document.getElementById("welcomeMessage");
 
 let selectedGender = null;
 
@@ -27,7 +29,7 @@ brandCheckboxes.forEach((checkbox) => {
     const label = checkbox.closest(".checkboxLabel");
     if (checkbox.checked) {
       label.style.background =
-        "linear-gradient(to top, #E0FFFF 40%, transparent 100%)";
+        "linear-gradient(to top, #f88379 -20%, transparent 100%)";
     } else {
       label.style.background = "transparent";
     }
@@ -51,13 +53,16 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     if (data.success) {
       selectedGender = data.gender;
-
+      welcomeMessage.innerHTML = `Kimin ürünlerini takip etmek istersin? Bu seçim, belirli bir ürün için özel takip yapmanı engellemez.`;
       if (selectedGender && selectedGender.trim().length > 0) {
         const genderContainer = document.querySelector(".genderDiv");
         if (genderContainer && genderContainer.parentNode) {
           genderContainer.parentNode.removeChild(genderContainer);
         }
         brandSection.style.display = "flex";
+        brandSection.style.flexDirection = "column";
+        brandSection.style.alignItems = "center";
+        welcomeMessage.innerHTML = `Hoş geldin <span style="font-weight: bold;">${prefix}</span>, takip etmek istediğin markaları seçebilirsin.`;
       }
 
       brandCheckboxes.forEach((cb) => {
@@ -68,7 +73,7 @@ window.addEventListener("DOMContentLoaded", async () => {
             const label = cb.closest(".checkboxLabel");
             if (label) {
               label.style.background =
-                "linear-gradient(to top, #E0FFFF 40%, transparent 100%)";
+                "linear-gradient(to top, #f88379 40%, transparent 100%)";
             }
           });
         }
@@ -105,9 +110,8 @@ saveButton.addEventListener("click", async (event) => {
     });
 
     const result = await res.json();
-    userPanelMessage.style.display = "block";
-    userPanelMessage.textContent =
-      "Seçimlerin başarıyla kayıt edildi! Yeni bir ürün indirime girdiğinde anında haber vereceğiz.";
+    welcomeMessage.innerHTML =
+      "Seçimlerin başarıyla kayıt edildi! İndirime giren bir ürün olursa sana anında haber vereceğiz.";
 
     // Sadece mobilde scroll to top
     if (window.innerWidth <= 768) {

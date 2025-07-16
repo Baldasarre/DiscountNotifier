@@ -1,5 +1,5 @@
 html {
-    font-family: "Roboto Slab", "Quicksand", "Cabin", sans-serif;
+  font-family: "Roboto Slab", "Quicksand", "Cabin", sans-serif;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -55,13 +55,19 @@ h2 {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 10vw;
+  gap: 6vh;
 }
 
-#welcomeMessage{
+#welcomeMessage {
   font-family: "Quicksand";
   font-weight: 400;
   font-size: 3.2vh;
+}
+
+#welcomeMesDiv {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .checkboxBrand {
@@ -73,12 +79,12 @@ h2 {
   padding: 0rem 2rem;
   border: 2px solid #011f26;
   border-radius: 3vh;
-  box-shadow: #413f3f 0.3vw 0.5vh 0 0;
+  box-shadow: #413f3f 0.3vw 0.4vh 0 0;
   display: flex;
   justify-content: center;
   align-items: center;
   transition: all 130ms ease-in-out;
-  background-color: #E9E9E9;
+  background-color: white;
 }
 
 .checkboxLabelGender {
@@ -93,11 +99,11 @@ h2 {
   justify-content: center;
   align-items: center;
   transition: all 130ms ease-in-out;
-  background-color: #E9E9E9;
+  background-color: white;
 }
 
 .checkboxGender {
-   font-family: "Quicksand";
+  font-family: "Quicksand";
   font-weight: 400;
   font-size: 2vh;
   height: 13vh;
@@ -113,7 +119,7 @@ h2 {
   justify-content: center;
   align-items: center;
   transition: all 130ms ease-in-out;
-  background-color: #E9E9E9;
+  background-color: white;
 }
 
 .checkboxGenderInput {
@@ -121,16 +127,21 @@ h2 {
 }
 
 .saveButton {
+  font-family: "Quicksand";
+  font-weight: 400;
+  font-size: 1.4rem;
   margin: 1rem;
-  width: 12vh;
+  height: 8vh;
+  width: 20vw;
   border-radius: 3vh;
   box-shadow: #413f3f 0.3vw 0.5vh 0 0;
-  background: #E9E9E9;
- 
+  background: #f88379;
+  margin-top: 6vh;
+  transition: 200ms;
 }
 
 .saveButton:hover {
-  background: #f88379;
+  background: #f76557;
 }
 
 .saveButton.clicked {
@@ -157,11 +168,13 @@ h2 {
 }
 
 .brandLogos {
-      width: 15vh;
+  width: 15vh;
 }
 
 #buttonsDiv {
   display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 #userEmailPrefix,
@@ -171,23 +184,20 @@ h2 {
   font-family: "Playwrite CU", sans-serif;
   text-shadow: 0.3vw 0.3vh #78866b;
   pointer-events: none;
-  font-size: 4.2vw;
+  font-size: 3.2vh;
   font-weight: 600;
   margin: 0;
 }
 
 #statusMessage {
   display: none;
-  padding-right: 10rem;
-  text-decoration: none;
   color: #011f26;
-  font-family: "Playwrite CU", sans-serif;
+  font-family: "Quicksand";
   pointer-events: none;
   font-size: 1.2vw;
-  font-weight: 600;
+  font-weight: 400;
   margin-top: 6vh;
   margin-bottom: 0;
-  width: 45vh;
 }
 
 .genderDiv {
@@ -195,4 +205,8 @@ h2 {
   flex-direction: row;
   align-items: center;
   justify-content: center;
+}
+
+#brandButtons {
+  display: flex;
 }
