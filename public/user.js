@@ -6,20 +6,34 @@ const brandCheckboxes = document.querySelectorAll(".checkboxBrand");
 const email = localStorage.getItem("userEmail");
 const prefix = email?.split("@")[0] || "Kullanıcı";
 const welcomeMessage = document.getElementById("welcomeMessage");
+const genderDiv = document.querySelector(".genderDiv");
 
 let selectedGender = null;
 
-// Hide brand section initially
-brandSection.style.display = "none";
 
-// Handle gender selection by user
+welcomeMessage.classList.add("element-transition");
+genderDiv.classList.add("element-transition");
+brandSection.classList.add("element-transition");
+brandSection.style.display = "none";
+brandSection.classList.add("element-hidden");
+
 genderButtons.forEach((label) => {
   label.addEventListener("click", () => {
     selectedGender = label.textContent.trim();
+    welcomeMessage.classList.add("element-hidden");
+    genderDiv.classList.add("element-hidden");
 
-    brandSection.style.display = "flex";
-    genderButtons.forEach((l) => (l.style.display = "none"));
-    label.style.backgroundColor = "#f88379";
+    setTimeout(() => {
+      genderDiv.style.display = "none";
+      welcomeMessage.innerHTML = `Hoş geldin <span style="font-weight: bold;">${prefix}</span>, takip etmek istediğin markaları seçebilirsin.`;
+      brandSection.style.display = "flex";
+
+      requestAnimationFrame(() => {
+        welcomeMessage.classList.remove("element-hidden");
+        brandSection.classList.remove("element-hidden");
+      });
+      
+    }, 400); 
   });
 });
 
@@ -38,12 +52,7 @@ brandCheckboxes.forEach((checkbox) => {
 
 // Fetch user info on page load
 window.addEventListener("DOMContentLoaded", async () => {
-  const email = localStorage.getItem("userEmail");
   if (!email) return;
-
-  const prefix = email.split("@")[0];
-  const target = document.getElementById("userEmailPrefix");
-  if (target) target.textContent = prefix;
 
   try {
     const res = await fetch(
@@ -53,22 +62,23 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     if (data.success) {
       selectedGender = data.gender;
-      welcomeMessage.innerHTML = `Kimin ürünlerini takip etmek istersin? Bu seçim, belirli bir ürün için özel takip yapmanı engellemez.`;
+      
       if (selectedGender && selectedGender.trim().length > 0) {
-        const genderContainer = document.querySelector(".genderDiv");
-        if (genderContainer && genderContainer.parentNode) {
-          genderContainer.parentNode.removeChild(genderContainer);
-        }
-        brandSection.style.display = "flex";
+        genderDiv.style.display = "none"; 
+        brandSection.style.display = "flex"; 
+        brandSection.classList.remove("element-hidden"); 
+        
+        welcomeMessage.innerHTML = `Hoş geldin <span style="font-weight: bold;">${prefix}</span>, takip etmek istediğin markaları seçebilirsin.`;
+        
         brandSection.style.flexDirection = "column";
         brandSection.style.alignItems = "center";
-        welcomeMessage.innerHTML = `Hoş geldin <span style="font-weight: bold;">${prefix}</span>, takip etmek istediğin markaları seçebilirsin.`;
+      } else {
+        welcomeMessage.innerHTML = `Kimin ürünlerini takip etmek istersin? Bu seçim, belirli bir ürün için özel takip yapmanı engellemez.`;
       }
 
       brandCheckboxes.forEach((cb) => {
         if (data.brands.includes(cb.value)) {
           cb.checked = true;
-
           requestAnimationFrame(() => {
             const label = cb.closest(".checkboxLabel");
             if (label) {
@@ -88,9 +98,8 @@ window.addEventListener("DOMContentLoaded", async () => {
 saveButton.addEventListener("click", async (event) => {
   event.preventDefault();
 
-  const email = localStorage.getItem("userEmail");
   if (!email) return alert("E-posta bilgisi eksik!");
-  if (!selectedGender) return alert("Please select a gender!");
+  if (!selectedGender) return alert("Lütfen bir cinsiyet seçin!");
 
   const selectedBrands = [...brandCheckboxes]
     .filter((cb) => cb.checked)
@@ -112,12 +121,12 @@ saveButton.addEventListener("click", async (event) => {
     const result = await res.json();
     welcomeMessage.innerHTML =
       "Seçimlerin başarıyla kayıt edildi! İndirime giren bir ürün olursa sana anında haber vereceğiz.";
+    welcomeMessage.classList.remove("element-hidden");
 
-    // Sadece mobilde scroll to top
     if (window.innerWidth <= 768) {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   } catch (err) {
-    userPanelMessage.textContent = "Kayıt hatası!";
+    welcomeMessage.textContent = "Kayıt sırasında bir hata oluştu!";
   }
 });

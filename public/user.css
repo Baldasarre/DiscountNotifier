@@ -84,7 +84,6 @@ h2 {
   justify-content: center;
   align-items: center;
   transition: all 130ms ease-in-out;
-  background-color: white;
 }
 
 .checkboxLabelGender {
@@ -99,7 +98,12 @@ h2 {
   justify-content: center;
   align-items: center;
   transition: all 130ms ease-in-out;
-  background-color: white;
+
+}
+
+.checkboxGender:hover{
+  box-shadow: #422800 1px 1px 0 0;
+  transform: translate(2px, 2px);
 }
 
 .checkboxGender {
@@ -111,15 +115,13 @@ h2 {
   padding: 0rem 2rem;
   border: 2px solid #011f26;
   border-radius: 3vh;
-  border-top: transparent;
-  border-left: transparent;
   box-shadow: #413f3f 0.3vw 0.5vh 0 0;
   width: 15vh;
   display: flex;
   justify-content: center;
   align-items: center;
   transition: all 130ms ease-in-out;
-  background-color: white;
+
 }
 
 .checkboxGenderInput {
@@ -209,4 +211,15 @@ h2 {
 
 #brandButtons {
   display: flex;
+}
+
+
+.element-transition {
+    opacity: 1; 
+    transition: opacity 400ms ease-in-out;
+}
+
+
+.element-hidden {
+    opacity: 0; 
 }

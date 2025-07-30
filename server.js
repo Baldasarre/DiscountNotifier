@@ -147,6 +147,14 @@ app.post("/api/verify-code", (req, res) => {
   user.attempts = 0;
 
   fs.writeFileSync("users.json", JSON.stringify(users, null, 2));
+
+  res.cookie("sessionId", user.id, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 1000 * 60 * 30, // 30 dakika
+    sameSite: "Lax",
+  });
+
   res.json({ success: true, message: "Kod doğru. Giriş başarılı." });
 });
 
@@ -189,6 +197,31 @@ app.get("/api/user-info", (req, res) => {
 
   const { gender = null, brands = [] } = user;
   res.json({ success: true, gender, brands });
+});
+
+app.get("/api/check-session", (req, res) => {
+  const sessionId = req.cookies.sessionId;
+
+  if (!sessionId) {
+    return res.json({ loggedIn: false });
+  }
+
+  let users = [];
+  try {
+    users = JSON.parse(fs.readFileSync("users.json", "utf8"));
+  } catch (error) {
+    console.error("Kullanıcı verisi okunurken hata:", error);
+    return res.status(500).json({ error: "Sunucu hatası." });
+  }
+
+  const user = users.find((u) => u.id === sessionId && u.verified);
+
+  if (user) {
+    return res.json({ loggedIn: true, email: user.email });
+  } else {
+    res.clearCookie("sessionId");
+    return res.json({ loggedIn: false });
+  }
 });
 
 app.listen(PORT, () => {

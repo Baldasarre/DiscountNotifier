@@ -4,10 +4,11 @@ const emailInput = document.getElementById("emailInput");
 let mode = "email";
 let currentEmail = "";
 
-// ✅ 1. Sayfa açıldığında oturum kontrolü yap
 window.addEventListener("DOMContentLoaded", async () => {
   try {
-    const res = await fetch("/api/check-session");
+    const res = await fetch("/api/check-session", {
+      credentials: "include",
+    });
     const data = await res.json();
 
     if (data.loggedIn) {
@@ -24,13 +25,11 @@ window.addEventListener("DOMContentLoaded", async () => {
 signInButton.addEventListener("click", (event) => {
   event.preventDefault();
 
-  // 👇 Efekti görsel olarak uygulamak için:
   signInButton.classList.add("buttonClicked");
   setTimeout(() => {
     signInButton.classList.remove("buttonClicked");
-  }, 150); // efekt süresi kadar
+  }, 150);
 
-  // input'u göster
   setTimeout(() => {
     signInButton.style.display = "none";
     emailInput.style.display = "inline-block";
@@ -130,4 +129,3 @@ function showErrMessage(msg) {
   emailInput.placeholder = msg;
   emailInput.disabled = true; 
 }
-
