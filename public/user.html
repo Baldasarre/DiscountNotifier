@@ -24,9 +24,12 @@
   <body>
     <form id="form">
       <div id="welcomeMesDiv">
-        <h1 id="welcomeMessage"></h1>
-        <div class="linkBox"></div>
+        <h1 id="welcomeMessage">
+          Kimin ürünlerini takip etmek istersin? Bu seçim, belirli bir ürün için
+          özel takip yapmanı engellemez.
+        </h1>
       </div>
+
       <div class="genderDiv">
         <label class="checkboxGender"
           ><input
@@ -53,76 +56,117 @@
         >
       </div>
       <div id="buttonsDiv">
-        <div id="brandButtons">
-          <label class="checkboxLabel"
-            ><input
-              class="checkboxBrand"
-              type="checkbox"
-              name="brands"
-              value="Zara" /><img class="brandLogos" src="/zara.png" alt="Zara"
-          /></label>
-          <label class="checkboxLabel"
-            ><input
-              class="checkboxBrand"
-              type="checkbox"
-              name="brands"
-              value="Pull&Bear" /><img
-              class="brandLogos"
-              src="/pb.png"
-              alt="PullBear"
-          /></label>
-          <label class="checkboxLabel"
-            ><input
-              class="checkboxBrand"
-              type="checkbox"
-              name="brands"
-              value="Massimo_Dutti" /><img
-              class="brandLogos"
-              src="/Massimo_Dutti.png"
-              alt="MassimoDutti"
-          /></label>
-          <label class="checkboxLabel"
-            ><input
-              class="checkboxBrand"
-              type="checkbox"
-              name="brands"
-              value="Oysho" /><img
-              class="brandLogos"
-              src="/oysho.png"
-              alt="Oysho"
-          /></label>
-          <label class="checkboxLabel"
-            ><input
-              class="checkboxBrand"
-              type="checkbox"
-              name="brands"
-              value="Stradivarius" /><img
-              class="brandLogos"
-              src="/stradivarius.png"
-              alt="Stradivarius"
-          /></label>
-          <label class="checkboxLabel"
-            ><input
-              class="checkboxBrand"
-              type="checkbox"
-              name="brands"
-              value="Bershka" /><img
-              class="brandLogos"
-              src="/bershka.png"
-              alt="Bershka"
-          /></label>
-          <label class="checkboxLabel"
-            ><input
-              class="checkboxBrand"
-              type="checkbox"
-              name="brands"
-              value="H&M" /><img class="brandLogos" src="/hm.png" alt="HM"
-          /></label>
+        <div class="linkBox">
+          <div id="inputDiv"><input
+            class="linkInput"
+            type="url"
+            placeholder="Takip etmek istediğin ürünün linkini buraya yapıştırabilirsin."
+          />
+          <button class="addButton">Ekle</button>
         </div>
-        <button id="saveButton" class="saveButton" type="submit">Kaydet</button>
+          
+          <div class="addedItemImgs">
+            <div class="addedItemImgBox"></div>
+          </div>
+        </div>
+        <div id="brandButtons">
+          <div class="buttonTwins">
+            <label class="checkboxLabel"
+              ><input
+                class="checkboxBrand"
+                type="checkbox"
+                name="brands"
+                value="Zara" /><img
+                class="brandLogos"
+                src="zara.png"
+                alt="Zara"
+            /></label>
+            <label class="checkboxLabel"
+              ><input
+                class="checkboxBrand"
+                type="checkbox"
+                name="brands"
+                value="Mango" /><img
+                class="brandLogos"
+                src="mango.png"
+                alt="Zara"
+            /></label>
+          </div>
+          <div class="buttonTwins">
+            <label class="checkboxLabel"
+              ><input
+                class="checkboxBrand"
+                type="checkbox"
+                name="brands"
+                value="Massimo_Dutti" /><img
+                class="brandLogos"
+                src="/Massimo_Dutti.png"
+                alt="MassimoDutti"
+            /></label>
+            <label class="checkboxLabel"
+              ><input
+                class="checkboxBrand"
+                type="checkbox"
+                name="brands"
+                value="Oysho" /><img
+                class="brandLogos"
+                src="/oysho.png"
+                alt="Oysho"
+            /></label>
+          </div>
+          <div class="buttonTwins">
+            <label class="checkboxLabel"
+              ><input
+                class="checkboxBrand"
+                type="checkbox"
+                name="brands"
+                value="Stradivarius" /><img
+                class="brandLogos"
+                src="/stradivarius.png"
+                alt="Stradivarius"
+            /></label>
+            <label class="checkboxLabel"
+              ><input
+                class="checkboxBrand"
+                type="checkbox"
+                name="brands"
+                value="Bershka" /><img
+                class="brandLogos"
+                src="/bershka.png"
+                alt="Bershka"
+            /></label>
+          </div>
+          <div class="buttonTwins">
+            <label class="checkboxLabel"
+              ><input
+                class="checkboxBrand"
+                type="checkbox"
+                name="brands"
+                value="H&M" /><img class="brandLogos" src="/hm.png" alt="HM"
+            /></label>
+            <label class="checkboxLabel"
+              ><input
+                class="checkboxBrand"
+                type="checkbox"
+                name="brands"
+                value="Pull&Bear" /><img
+                class="brandLogos"
+                src="/pb.png"
+                alt="PullBear"
+            /></label>
+          </div>
+          <button id="saveButton" class="saveButton" type="submit">
+              Kaydet
+            </button>
+        </div>
       </div>
+      <footer class="footer">
+      <div class="footerDiv">
+        <p class="footerText">Tüm hakları saklıdır © 2025</p>
+      </div>
+    </footer>
     </form>
-
+    
     <script src="user.js"></script>
   </body>
 </html>

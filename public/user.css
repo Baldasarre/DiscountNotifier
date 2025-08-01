@@ -50,6 +50,7 @@ h2 {
     background-position: 0% 50%;
   }
 }
+
 #form {
   display: flex;
   flex-direction: column;
@@ -65,9 +66,11 @@ h2 {
 }
 
 #welcomeMesDiv {
+  position: fixed;
   display: flex;
   flex-direction: column;
   align-items: center;
+  top: 15%;
 }
 
 .checkboxBrand {
@@ -75,8 +78,10 @@ h2 {
 }
 
 .checkboxLabel {
-  margin: 1rem;
-  padding: 0rem 2rem;
+  height: 6rem;
+  width: 10rem;
+  margin: 0.4rem;
+  padding: 0rem 1rem;
   border: 2px solid #011f26;
   border-radius: 3vh;
   box-shadow: #413f3f 0.3vw 0.4vh 0 0;
@@ -98,10 +103,9 @@ h2 {
   justify-content: center;
   align-items: center;
   transition: all 130ms ease-in-out;
-
 }
 
-.checkboxGender:hover{
+.checkboxGender:hover {
   box-shadow: #422800 1px 1px 0 0;
   transform: translate(2px, 2px);
 }
@@ -121,7 +125,6 @@ h2 {
   justify-content: center;
   align-items: center;
   transition: all 130ms ease-in-out;
-
 }
 
 .checkboxGenderInput {
@@ -132,13 +135,12 @@ h2 {
   font-family: "Quicksand";
   font-weight: 400;
   font-size: 1.4rem;
-  margin: 1rem;
-  height: 8vh;
-  width: 20vw;
+  margin: 0.4rem;
+  height: 6rem;
+  width: 25rem;
   border-radius: 3vh;
   box-shadow: #413f3f 0.3vw 0.5vh 0 0;
   background: #f88379;
-  margin-top: 6vh;
   transition: 200ms;
 }
 
@@ -170,13 +172,14 @@ h2 {
 }
 
 .brandLogos {
-  width: 15vh;
+  width: inherit;
 }
 
 #buttonsDiv {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
+  gap: 1rem;
 }
 
 #userEmailPrefix,
@@ -211,15 +214,103 @@ h2 {
 
 #brandButtons {
   display: flex;
+  flex-direction: column;
 }
-
 
 .element-transition {
-    opacity: 1; 
-    transition: opacity 400ms ease-in-out;
+  opacity: 1;
+  transition: opacity 400ms ease-in-out;
+}
+
+.element-hidden {
+  opacity: 0;
+}
+
+.linkBox {
+  width: 60rem;
+  height: 34rem;
+  border: solid 2px black;
+  border-radius: 4vh;
+  box-shadow: #413f3f 0.3vw 0.5vh 0 0;
+}
+.linkInput{
+   font-family: "Quicksand";
+  width: 88%;
+  border: solid 2px black;
+  height: 5rem;
+  margin: 1rem;
+  border-radius: 3vh;
+  box-shadow: #413f3f 0.2vw 0.4vh 0 0;
+  cursor: text;
+  font-weight: 600;
+  font-size: calc(0.5rem + 0.6vw);
+  text-align: center;
+  text-decoration: none;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  outline: none;
+  overflow:hidden;
+  transition: all 150ms ease-in-out;
+  padding-right: 30px;
+  padding-left: 30px;
+}
+
+#inputDiv {
+  display: flex;
+}
+
+.addButton:hover {
+  box-shadow: #422800 1px 1px 0 0;
+  transform: translate(2px, 2px);
+}
+
+ .addButton {
+   font-family: "Quicksand";
+    margin: 1rem;
+    margin-left: 0;
+    height: 5rem;
+    width: 7rem;
+    border-radius: 2rem;
+     box-shadow: #413f3f 0.2vw 0.4vh 0 0;
+    transition: all 150ms ease-in-out;
+    font-weight: 600;
+  font-size: calc(0.5rem + 0.6vw);
+  background: #febcb6;
+ }
+
+.buttonTwins{
+  display: flex;
+}
+
+.footer {
+  position: absolute;
+  width: -webkit-fill-available;
+  margin-top: 9vh;
+  padding: 2vh 0;
+  font-size: 0.9rem;
+  color: #333;
+  bottom: 2%;
+}
+
+.footerDiv {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.footerText {
+  font-size: calc(0.5rem + 0.3vw);
+  color: #7393B3;
 }
 
 
-.element-hidden {
-    opacity: 0; 
+@media (max-height: 1080px) {
+#welcomeMesDiv {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  top: 7%;
+}
 }

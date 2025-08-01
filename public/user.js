@@ -7,6 +7,7 @@ const email = localStorage.getItem("userEmail");
 const prefix = email?.split("@")[0] || "Kullanıcı";
 const welcomeMessage = document.getElementById("welcomeMessage");
 const genderDiv = document.querySelector(".genderDiv");
+const linkBox = document.querySelector(".linkbox");
 
 let selectedGender = null;
 
@@ -16,6 +17,9 @@ genderDiv.classList.add("element-transition");
 brandSection.classList.add("element-transition");
 brandSection.style.display = "none";
 brandSection.classList.add("element-hidden");
+saveButton.classList.add("element-transition");
+saveButton.style.display = "none";
+saveButton.classList.add("element-hidden");
 
 genderButtons.forEach((label) => {
   label.addEventListener("click", () => {
@@ -25,12 +29,13 @@ genderButtons.forEach((label) => {
 
     setTimeout(() => {
       genderDiv.style.display = "none";
-      welcomeMessage.innerHTML = `Hoş geldin <span style="font-weight: bold;">${prefix}</span>, takip etmek istediğin markaları seçebilirsin.`;
+      welcomeMessage.innerHTML = `Hoş geldin <span style="font-weight: bold;">${prefix}</span>, takip etmek istediğin markaları seçebilir, direkt ürün takibi yapabilirsin.`;
       brandSection.style.display = "flex";
-
+      saveButton.style.display = "block"; 
       requestAnimationFrame(() => {
         welcomeMessage.classList.remove("element-hidden");
         brandSection.classList.remove("element-hidden");
+        saveButton.classList.remove("element-hidden");
       });
       
     }, 400); 
@@ -68,7 +73,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         brandSection.style.display = "flex"; 
         brandSection.classList.remove("element-hidden"); 
         
-        welcomeMessage.innerHTML = `Hoş geldin <span style="font-weight: bold;">${prefix}</span>, takip etmek istediğin markaları seçebilirsin.`;
+        welcomeMessage.innerHTML = `Hoş geldin <span style="font-weight: bold;">${prefix}</span>, takip etmek istediğin markaları seçebilir, direkt ürün takibi yapabilirsin.`;
         
         brandSection.style.flexDirection = "column";
         brandSection.style.alignItems = "center";
