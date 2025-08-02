@@ -6,6 +6,8 @@ const cors = require("cors");
 const { v4: uuidv4 } = require("uuid");
 const nodemailer = require("nodemailer");
 const cookieParser = require("cookie-parser");
+const rateLimit = require('express-rate-limit'); 
+
 const app = express();
 const PORT = 3000;
 
@@ -13,6 +15,15 @@ app.use(cookieParser());
 app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
+
+//Rate limit
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, 
+    max: 10, 
+    message: 'Çok fazla istek gönderdiniz. Lütfen 15 dakika sonra tekrar deneyin.',
+    standardHeaders: true, 
+    legacyHeaders: false, 
+});
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -46,7 +57,7 @@ function generateCode() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-app.post("/api/save", (req, res) => {
+app.post("/api/save", apiLimiter, (req, res) => { 
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: "E-posta eksik." });
 
@@ -100,7 +111,7 @@ app.post("/api/save", (req, res) => {
   res.json({ success: true, message });
 });
 
-app.post("/api/verify-code", (req, res) => {
+app.post("/api/verify-code", apiLimiter, (req, res) => { 
   const { email, code } = req.body;
   if (!email || !code)
     return res.status(400).json({ error: "E-posta ve kod gerekli." });
@@ -151,7 +162,7 @@ app.post("/api/verify-code", (req, res) => {
   res.cookie("sessionId", user.id, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    maxAge: 1000 * 60 * 30, // 30 dakika
+    maxAge: 1000 * 60 * 30,
     sameSite: "Lax",
   });
 

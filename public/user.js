@@ -11,7 +11,6 @@ const linkBox = document.querySelector(".linkbox");
 
 let selectedGender = null;
 
-
 welcomeMessage.classList.add("element-transition");
 genderDiv.classList.add("element-transition");
 brandSection.classList.add("element-transition");
@@ -29,16 +28,26 @@ genderButtons.forEach((label) => {
 
     setTimeout(() => {
       genderDiv.style.display = "none";
-      welcomeMessage.innerHTML = `Hoş geldin <span style="font-weight: bold;">${prefix}</span>, takip etmek istediğin markaları seçebilir, direkt ürün takibi yapabilirsin.`;
+
+      welcomeMessage.innerHTML = "";
+      const textPart1 = document.createTextNode("Hoş geldin ");
+      const textPart2 = document.createTextNode(
+        ", takip etmek istediğin markaları seçebilir, direkt ürün takibi yapabilirsin."
+      );
+      const boldElement = document.createElement("strong");
+      boldElement.textContent = prefix;
+      welcomeMessage.appendChild(textPart1);
+      welcomeMessage.appendChild(boldElement);
+      welcomeMessage.appendChild(textPart2);
+
       brandSection.style.display = "flex";
-      saveButton.style.display = "block"; 
+      saveButton.style.display = "block";
       requestAnimationFrame(() => {
         welcomeMessage.classList.remove("element-hidden");
         brandSection.classList.remove("element-hidden");
         saveButton.classList.remove("element-hidden");
       });
-      
-    }, 400); 
+    }, 400);
   });
 });
 
@@ -67,15 +76,26 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     if (data.success) {
       selectedGender = data.gender;
-      
+
       if (selectedGender && selectedGender.trim().length > 0) {
-        genderDiv.style.display = "none"; 
-        brandSection.style.display = "flex"; 
-        brandSection.classList.remove("element-hidden"); 
-        
-        welcomeMessage.innerHTML = `Hoş geldin <span style="font-weight: bold;">${prefix}</span>, takip etmek istediğin markaları seçebilir, direkt ürün takibi yapabilirsin.`;
-        
-        brandSection.style.flexDirection = "column";
+        genderDiv.style.display = "none";
+        brandSection.style.display = "flex";
+        brandSection.classList.remove("element-hidden");
+        saveButton.style.display = "block";
+        saveButton.classList.remove("element-hidden");
+
+        welcomeMessage.innerHTML = "";
+        const textPart1 = document.createTextNode("Hoş geldin ");
+        const textPart2 = document.createTextNode(
+          ", takip etmek istediğin markaları seçebilir, direkt ürün takibi yapabilirsin."
+        );
+        const boldElement = document.createElement("strong");
+        boldElement.textContent = prefix;
+        welcomeMessage.appendChild(textPart1);
+        welcomeMessage.appendChild(boldElement);
+        welcomeMessage.appendChild(textPart2);
+
+        brandSection.style.flexDirection = "row";
         brandSection.style.alignItems = "center";
       } else {
         welcomeMessage.innerHTML = `Kimin ürünlerini takip etmek istersin? Bu seçim, belirli bir ürün için özel takip yapmanı engellemez.`;
