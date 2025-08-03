@@ -12,7 +12,11 @@ window.addEventListener("DOMContentLoaded", async () => {
     const data = await res.json();
 
     if (data.loggedIn) {
-      showMessage("Oturum aktif. Giriş yapılıyor...");
+      const signInButton = document.getElementById("signInButton");
+      signInButton.textContent = "Oturum aktif. Giriş yapılıyor...";
+      signInButton.disabled = true;
+      signInButton.style.cursor = "wait";
+
       setTimeout(() => {
         window.location.href = "/user.html";
       }, 2000);

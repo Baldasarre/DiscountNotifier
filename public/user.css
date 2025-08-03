@@ -78,8 +78,8 @@ h2 {
 }
 
 .checkboxLabel {
-  height: 6rem;
-  width: 10rem;
+  height: 8rem;
+  width: 12rem;
   margin: 0.4rem;
   padding: 0rem 1rem;
   border: 2px solid #011f26;
@@ -179,7 +179,7 @@ h2 {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 1rem;
+  gap: 6rem;
 }
 
 #userEmailPrefix,
@@ -215,6 +215,7 @@ h2 {
 #brandButtons {
   display: flex;
   flex-direction: column;
+  align-items: center;
 }
 
 .element-transition {
@@ -228,7 +229,7 @@ h2 {
 
 .linkBox {
   width: 60rem;
-  height: 34rem;
+  height: 35rem;
   border: solid 2px black;
   border-radius: 4vh;
   box-shadow: #413f3f 0.3vw 0.5vh 0 0;
@@ -314,3 +315,29 @@ h2 {
   top: 7%;
 }
 }
+
+.separator{
+  width: 1px;
+  height: 22rem;
+  margin-top: 4rem;
+  background: black;
+}
+
+.instruction {
+   font-family: "Quicksand";
+  font-weight: 400;
+  font-size: 2.2vh;
+  margin: 0;
+}
+
+#linkBoxParrent{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#linkBoxInstruction,
+#brandBoxInstruction {
+  margin-bottom: 3rem;
+}
+

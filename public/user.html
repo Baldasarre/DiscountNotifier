@@ -53,20 +53,31 @@
         >
       </div>
       <div id="buttonsDiv">
-        <div class="linkBox">
-          <div id="inputDiv"><input
-            class="linkInput"
-            type="url"
-            placeholder="Takip etmek istediğin ürünün linkini buraya yapıştırabilirsin."
-          />
-          <button class="addButton">Ekle</button>
-        </div>
-          
-          <div class="addedItemImgs">
-            <div class="addedItemImgBox"></div>
+        <div id="linkBoxParrent">
+          <div id="linkBoxInstruction">
+            <h1 class="instruction">Ürün takibi için bu bölümü kullanmalısın.</h1>
+          </div>
+          <div class="linkBox">
+            <div id="inputDiv">
+              <input
+                class="linkInput"
+                type="url"
+                placeholder="Takip etmek istediğin ürünün linkini buraya yapıştırabilirsin."
+              />
+              <button class="addButton">Ekle</button>
+            </div>
+
+            <div class="addedItemImgs">
+              <div class="addedItemImgBox"></div>
+            </div>
           </div>
         </div>
+        <div class="separator"></div>
+
         <div id="brandButtons">
+          <div id="brandBoxInstruction">
+            <h1 class="instruction">İndirim sayfasının tamamını takip etmek istediğin markaları seçebilirsin.</h1>
+          </div>
           <div class="buttonTwins">
             <label class="checkboxLabel"
               ><input
@@ -152,18 +163,15 @@
                 alt="PullBear"
             /></label>
           </div>
-          <button id="saveButton" class="saveButton" type="submit">
-              Kaydet
-            </button>
         </div>
       </div>
       <footer class="footer">
-      <div class="footerDiv">
-        <p class="footerText">Tüm hakları saklıdır © 2025</p>
-      </div>
-    </footer>
+        <div class="footerDiv">
+          <p class="footerText">Tüm hakları saklıdır © 2025</p>
+        </div>
+      </footer>
     </form>
-    
+
     <script src="user.js"></script>
   </body>
 </html>
