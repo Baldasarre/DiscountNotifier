@@ -78,8 +78,8 @@ h2 {
 }
 
 .checkboxLabel {
-  height: 8rem;
-  width: 12rem;
+  height: 7rem;
+  width: 10rem;
   margin: 0.4rem;
   padding: 0rem 1rem;
   border: 2px solid #011f26;
@@ -91,21 +91,7 @@ h2 {
   transition: all 130ms ease-in-out;
 }
 
-.checkboxLabelGender {
-  height: 8rem;
-  margin: 1rem;
-  padding: 0rem 2rem;
-  border: 2px solid #011f26;
-  border-radius: 3vh;
-  box-shadow: #413f3f 0.3vw 0.5vh 0 0;
-  width: 8rem;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  transition: all 130ms ease-in-out;
-}
-
-.checkboxGender:hover {
+.checkboxLabel:hover {
   box-shadow: #422800 1px 1px 0 0;
   transform: translate(2px, 2px);
 }
@@ -127,48 +113,13 @@ h2 {
   transition: all 130ms ease-in-out;
 }
 
-.checkboxGenderInput {
-  display: none;
-}
-
-.saveButton {
-  font-family: "Quicksand";
-  font-weight: 400;
-  font-size: 1.4rem;
-  margin: 0.4rem;
-  height: 6rem;
-  width: 25rem;
-  border-radius: 3vh;
-  box-shadow: #413f3f 0.3vw 0.5vh 0 0;
-  background: #f88379;
-  transition: 200ms;
-}
-
-.saveButton:hover {
-  background: #f76557;
-}
-
-.saveButton.clicked {
-  box-shadow: #422800 1px 1px 0 0 !important;
-  transform: translate(2px, 2px) !important;
-  transition: all 150ms ease-in-out;
-}
-
-.checkboxLabel:hover {
+.checkboxGender:hover {
   box-shadow: #422800 1px 1px 0 0;
   transform: translate(2px, 2px);
 }
 
-.buttonClicked {
-  box-shadow: #422800 1px 1px 0 0 !important;
-  transform: translate(4px, 4px) !important;
-  transition: all 150ms ease-in-out;
-}
-
-.brandButtonClicked {
-  box-shadow: #422800 1px 1px 0 0 !important;
-  transform: translate(2px, 2px) !important;
-  transition: all 150ms ease-in-out;
+.checkboxGenderInput {
+  display: none;
 }
 
 .brandLogos {
@@ -179,30 +130,7 @@ h2 {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 6rem;
-}
-
-#userEmailPrefix,
-#name {
-  text-decoration: none;
-  color: #011f26;
-  font-family: "Playwrite CU", sans-serif;
-  text-shadow: 0.3vw 0.3vh #78866b;
-  pointer-events: none;
-  font-size: 3.2vh;
-  font-weight: 600;
-  margin: 0;
-}
-
-#statusMessage {
-  display: none;
-  color: #011f26;
-  font-family: "Quicksand";
-  pointer-events: none;
-  font-size: 1.2vw;
-  font-weight: 400;
-  margin-top: 6vh;
-  margin-bottom: 0;
+  gap: 4rem;
 }
 
 .genderDiv {
@@ -218,27 +146,90 @@ h2 {
   align-items: center;
 }
 
-.element-transition {
-  opacity: 1;
-  transition: opacity 400ms ease-in-out;
+.buttonTwins {
+  display: flex;
 }
 
-.element-hidden {
-  opacity: 0;
+/* ============================================= */
+/* YENİ EKLENEN ANİMASYON STİLLERİ BAŞLANGIÇ       */
+/* ============================================= */
+
+#linkBoxParrent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
+
+#linkBoxInstruction,
+#brandBoxInstruction {
+  margin-bottom: 3rem;
+}
+
+#linkBoxInstruction{
+  display: none;
+   transition: all 1000ms ease-in-out;
+}
+
+/* Başlangıçta görünecek büyük "Ekle" butonu */
+#openLinkBoxButton {
+   width: 22vh;
+  height: 8vh;
+  background-color: #f88379;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Link kutusunun başlangıç (gizli/kapalı) hali */
 .linkBox {
-  width: 60rem;
-  height: 35rem;
-  border: solid 2px black;
+  width: 0;
+  height: 0rem;
+  border: solid 0px black;
   border-radius: 4vh;
   box-shadow: #413f3f 0.3vw 0.5vh 0 0;
+  overflow: hidden;
+  opacity: 0;
+  padding: 0 1rem; /* Açılırkenki kaymayı engellemek için */
+  transition: all 1000ms ease-in-out;
 }
-.linkInput{
-   font-family: "Quicksand";
+
+/* Tıklandıktan sonra link kutusunun alacağı stil (AÇIK HALİ) */
+#linkBoxParrent.active .linkBox {
+  height: 28rem;
+  width: 54rem;
+  opacity: 1;
+  border-width: 2px;
+  padding: 1rem;
+}
+
+#linkBoxParrent.active #linkBoxInstruction {
+  display: block;
+}
+
+/* Tıklandıktan sonra büyük "Ekle" butonunu gizle */
+#linkBoxParrent.active #openLinkBoxButton {
+  display: none;
+}
+
+/* input ve küçük ekle butonunun başta gizli olmasını sağlar */
+#inputDiv {
+  display: flex;
+  opacity: 0;
+  transition: opacity 300ms ease-in-out 300ms; /* Gecikmeli gelsin */
+}
+
+/* Kutu açıldıktan sonra input ve küçük ekle butonunu göster */
+#linkBoxParrent.active #inputDiv {
+  opacity: 1;
+}
+
+.linkInput {
+  font-family: "Quicksand";
   width: 88%;
   border: solid 2px black;
-  height: 5rem;
+  height: 3rem;
   margin: 1rem;
   border-radius: 3vh;
   box-shadow: #413f3f 0.2vw 0.4vh 0 0;
@@ -251,14 +242,26 @@ h2 {
   -webkit-user-select: none;
   touch-action: manipulation;
   outline: none;
-  overflow:hidden;
+  overflow: hidden;
   transition: all 150ms ease-in-out;
   padding-right: 30px;
   padding-left: 30px;
 }
 
-#inputDiv {
-  display: flex;
+.addButton {
+  font-family: "Quicksand";
+  margin: 1rem;
+  margin-left: 0;
+  height: 3.5rem;
+  width: 7rem;
+  border-radius: 2rem;
+  box-shadow: #413f3f 0.2vw 0.4vh 0 0;
+  transition: all 150ms ease-in-out;
+  font-weight: 600;
+  font-size: calc(0.5rem + 0.6vw);
+  background: #febcb6;
+  border: none;
+  cursor: pointer;
 }
 
 .addButton:hover {
@@ -266,23 +269,40 @@ h2 {
   transform: translate(2px, 2px);
 }
 
- .addButton {
-   font-family: "Quicksand";
-    margin: 1rem;
-    margin-left: 0;
-    height: 5rem;
-    width: 7rem;
-    border-radius: 2rem;
-     box-shadow: #413f3f 0.2vw 0.4vh 0 0;
-    transition: all 150ms ease-in-out;
-    font-weight: 600;
-  font-size: calc(0.5rem + 0.6vw);
-  background: #febcb6;
- }
+/* ============================================= */
+/* YENİ EKLENEN ANİMASYON STİLLERİ BİTİŞ         */
+/* ============================================= */
 
-.buttonTwins{
-  display: flex;
+.element-transition {
+  opacity: 1;
+  transition: opacity 400ms ease-in-out;
 }
+
+.element-hidden {
+  opacity: 0;
+}
+
+.separator {
+  width: 1px;
+  height: 22rem;
+  margin-top: 4rem;
+  background: black;
+}
+
+.instruction {
+  font-family: "Quicksand";
+  font-weight: 400;
+  font-size: 2.2vh;
+  margin: 0;
+}
+
+.buttonInstruction{
+   font-family: "Quicksand";
+  font-weight: 400;
+  font-size: 1.6vh;
+  margin: 0;
+}
+
 
 .footer {
   position: absolute;
@@ -305,39 +325,12 @@ h2 {
   color: #7393B3;
 }
 
-
 @media (max-height: 1080px) {
-#welcomeMesDiv {
-  position: fixed;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  top: 7%;
+  #welcomeMesDiv {
+    position: fixed;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    top: 7%;
+  }
 }
-}
-
-.separator{
-  width: 1px;
-  height: 22rem;
-  margin-top: 4rem;
-  background: black;
-}
-
-.instruction {
-   font-family: "Quicksand";
-  font-weight: 400;
-  font-size: 2.2vh;
-  margin: 0;
-}
-
-#linkBoxParrent{
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-#linkBoxInstruction,
-#brandBoxInstruction {
-  margin-bottom: 3rem;
-}
-

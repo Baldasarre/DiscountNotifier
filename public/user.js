@@ -155,3 +155,15 @@ brandCheckboxes.forEach((checkbox) => {
     debouncedSave();
   });
 });
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    const openLinkBoxButton = document.getElementById('openLinkBoxButton');
+    const linkBoxParrent = document.getElementById('linkBoxParrent');
+
+    if (openLinkBoxButton) {
+        openLinkBoxButton.addEventListener('click', () => {
+            linkBoxParrent.classList.add('active');
+        });
+    }
+});
