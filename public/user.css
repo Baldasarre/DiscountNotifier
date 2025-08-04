@@ -59,10 +59,19 @@ h2 {
   gap: 6vh;
 }
 
+#userPageLogo {
+  position: absolute;
+  top: 2%;
+}
+
+#logoItSelf {
+  height: 3rem;
+}
+
 #welcomeMessage {
   font-family: "Quicksand";
   font-weight: 400;
-  font-size: 3.2vh;
+  font-size: 2.2vh;
 }
 
 #welcomeMesDiv {
@@ -70,7 +79,7 @@ h2 {
   display: flex;
   flex-direction: column;
   align-items: center;
-  top: 15%;
+  top: 30%;
 }
 
 .checkboxBrand {
@@ -78,8 +87,8 @@ h2 {
 }
 
 .checkboxLabel {
-  height: 8rem;
-  width: 12rem;
+  height: 5rem;
+  width: 7rem;
   margin: 0.4rem;
   padding: 0rem 1rem;
   border: 2px solid #011f26;
@@ -88,7 +97,9 @@ h2 {
   display: flex;
   justify-content: center;
   align-items: center;
-  transition: all 130ms ease-in-out;
+  background-color: transparent; /* Başlangıç rengini belirtelim */
+  transition: transform 130ms ease-in-out, box-shadow 130ms ease-in-out,
+    background-color 300ms ease-in-out;
 }
 
 .checkboxLabelGender {
@@ -177,9 +188,9 @@ h2 {
 
 #buttonsDiv {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
-  gap: 6rem;
+  gap: 1rem;
 }
 
 #userEmailPrefix,
@@ -214,7 +225,7 @@ h2 {
 
 #brandButtons {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
 }
 
@@ -228,17 +239,17 @@ h2 {
 }
 
 .linkBox {
-  width: 60rem;
-  height: 35rem;
+  width: 80rem;
+  height: 20em;
   border: solid 2px black;
   border-radius: 4vh;
   box-shadow: #413f3f 0.3vw 0.5vh 0 0;
 }
-.linkInput{
-   font-family: "Quicksand";
+.linkInput {
+  font-family: "Quicksand";
   width: 88%;
   border: solid 2px black;
-  height: 5rem;
+  height: 2.5rem;
   margin: 1rem;
   border-radius: 3vh;
   box-shadow: #413f3f 0.2vw 0.4vh 0 0;
@@ -251,7 +262,7 @@ h2 {
   -webkit-user-select: none;
   touch-action: manipulation;
   outline: none;
-  overflow:hidden;
+  overflow: hidden;
   transition: all 150ms ease-in-out;
   padding-right: 30px;
   padding-left: 30px;
@@ -266,21 +277,68 @@ h2 {
   transform: translate(2px, 2px);
 }
 
- .addButton {
-   font-family: "Quicksand";
-    margin: 1rem;
-    margin-left: 0;
-    height: 5rem;
-    width: 7rem;
-    border-radius: 2rem;
-     box-shadow: #413f3f 0.2vw 0.4vh 0 0;
-    transition: all 150ms ease-in-out;
-    font-weight: 600;
+.addButton {
+  font-family: "Quicksand";
+  margin: 1rem;
+  margin-left: 0;
+  height: 3rem;
+  width: 5rem;
+  border-radius: 2rem;
+  box-shadow: #413f3f 0.2vw 0.4vh 0 0;
+  transition: all 150ms ease-in-out;
+  font-weight: 600;
   font-size: calc(0.5rem + 0.6vw);
   background: #febcb6;
- }
+}
 
-.buttonTwins{
+.addedItemImgs{
+  display: flex;
+}
+
+.addedItemImgBox {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  margin: 1rem;
+  border-radius: 2rem;
+  width: 10rem;
+  height: 14rem;
+  margin-top: 0;
+  background: transparent;
+  border: solid 2px black;
+  box-shadow: #413f3f 0.2vw 0.4vh 0 0;
+  cursor: pointer;
+}
+
+.itemImg {
+  width: inherit;
+}
+
+.deleteItemButton {
+  font-family: "Quicksand";
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: absolute;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: solid 2px black;
+  border-radius: 2rem;
+  background-color: #f76557;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease-in-out;
+  cursor: pointer;
+}
+
+.addedItemImgBox:hover .deleteItemButton {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.buttonTwins {
   display: flex;
 }
 
@@ -291,7 +349,7 @@ h2 {
   padding: 2vh 0;
   font-size: 0.9rem;
   color: #333;
-  bottom: 2%;
+  bottom: 1%;
 }
 
 .footerDiv {
@@ -302,21 +360,22 @@ h2 {
 
 .footerText {
   font-size: calc(0.5rem + 0.3vw);
-  color: #7393B3;
+  color: #7393b3;
 }
-
 
 @media (max-height: 1080px) {
-#welcomeMesDiv {
-  position: fixed;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  top: 7%;
-}
+  #welcomeMesDiv {
+    position: fixed;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    top: 30%;
+  }
 }
 
-.separator{
+.separator {
+  position: fixed;
+  left: 50%;
   width: 1px;
   height: 22rem;
   margin-top: 4rem;
@@ -324,20 +383,59 @@ h2 {
 }
 
 .instruction {
-   font-family: "Quicksand";
+  font-family: "Quicksand";
   font-weight: 400;
   font-size: 2.2vh;
   margin: 0;
 }
 
-#linkBoxParrent{
+#linkBoxParrent {
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-#linkBoxInstruction,
-#brandBoxInstruction {
-  margin-bottom: 3rem;
+#linkBoxInstruction {
+  margin-bottom: 2rem;
 }
 
+#brandBoxInstruction {
+  margin-top: 5rem;
+  margin-bottom: 1rem;
+}
+
+@media (min-height: 1080px) {
+  #buttonsDiv {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+  }
+  .linkBox {
+    width: 87rem;
+    height: 21rem;
+  }
+  #brandBoxInstruction {
+    margin-top: 8rem;
+  }
+  .linkInput {
+    height: 3rem;
+  }
+  .addButton {
+    height: 3.5rem;
+    width: 6rem;
+  }
+  .checkboxLabel {
+    height: 6rem;
+    width: 8rem;
+    margin: 0.4rem;
+    padding: 0rem 1rem;
+    border: 2px solid #011f26;
+    border-radius: 3vh;
+    box-shadow: #413f3f 0.3vw 0.4vh 0 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 130ms ease-in-out;
+  }
+}
