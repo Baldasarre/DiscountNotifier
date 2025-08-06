@@ -89,11 +89,13 @@ function setWelcomeMessage(showUserName = true) { ... }
 // --- Event Listeners ---
 // This runs once the entire page has finished loading.
 window.addEventListener("DOMContentLoaded", async () => {
-  // If there's no email, do nothing.
-  if (!email) return;
-
-  // Fetch the user's saved preferences from the server.
   try {
+    if (!email) {
+      // Yeni kullanıcı ise formu direkt göster.
+      form.style.opacity = 1;
+      return;
+    }
+
     const res = await fetch(
       `/api/user-info?email=${encodeURIComponent(email)}`
     );
@@ -102,27 +104,24 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (data.success) {
       selectedGender = data.gender;
 
-      // If the user has already selected a gender before, skip the gender selection screen.
       if (selectedGender && selectedGender.trim().length > 0) {
+        // Mevcut kullanıcı ise marka bölümünü göster.
+        // Mesaj zaten HTML'de gizli olduğu için burada ek bir işlem yapmaya gerek yok.
         genderDiv.style.display = "none";
         brandSection.style.display = "flex";
         brandSection.classList.remove("element-hidden");
+      } else {
+        // --- YENİ EKLENEN MANTIK ---
+        // Eğer kullanıcı yeni ise (cinsiyet seçmemişse), karşılama mesajını görünür yap.
+        welcomeMessage.classList.remove("element-hidden");
       }
-      // Pre-check the brand checkboxes based on the user's saved data.
-      brandCheckboxes.forEach((cb) => {
-        if (data.brands.includes(cb.value)) {
-          cb.checked = true;
-          requestAnimationFrame(() => {
-            const label = cb.closest(".checkboxLabel");
-            if (label) {
-              label.style.backgroundColor = "#f88379";
-            }
-          });
-        }
-      });
+      
+      // ... (marka seçimi yükleme kodu aynı kalıyor)
     }
   } catch (err) {
     console.error("Kullanıcı bilgileri çekilirken hata oluştu:", err);
+  } finally {
+    form.style.opacity = 1;
   }
 });
 

@@ -162,7 +162,7 @@ app.post("/api/verify-code", apiLimiter, (req, res) => {
   res.cookie("sessionId", user.id, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    maxAge: 1000 * 60 * 30,
+    maxAge: 1000 * 60 * 60 * 24 * 14,
     sameSite: "Lax",
   });
 

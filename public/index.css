@@ -24,7 +24,15 @@ body::before {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: linear-gradient(45deg, white, #DA6C6C, #F4F8D3, #A2AADB, #B9B28A, #574964);
+  background: linear-gradient(
+    45deg,
+    white,
+    #da6c6c,
+    #f4f8d3,
+    #a2aadb,
+    #b9b28a,
+    #574964
+  );
   background-size: 400% 400%;
   animation: gradientMove 35s ease infinite;
   z-index: -1;
@@ -61,15 +69,15 @@ h1 {
 }
 
 #logo {
-  width: 40vw;
-  margin-bottom:5vh ;
+  width: 35vw;
+  margin-bottom: 5vh;
   margin-top: 10vh;
-  
 }
 
 #signInSection {
   padding-top: 8vh;
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
 }
@@ -78,19 +86,19 @@ h1 {
 #emailInput {
   font-family: "Quicksand";
   min-width: 120px;
-  width: 36vw;
-  height: 9vh;
+  width: 36rem;
+  height: 4rem;
   background: #f88379;
   border: 2px solid #011f26;
-  border-radius: 3vh;
-  box-shadow: #393737 0.4vw 0.8vh 0 0;
+  border-radius: 1.5rem;
+  box-shadow: #4b4949 0.2vw 0.3vh 0 0;
   border-top: transparent;
   border-left: transparent;
   color: #011f26;
   cursor: pointer;
   display: inline-block;
   font-weight: 600;
-  font-size: calc(0.5rem + 0.6vw);
+  font-size: 1rem;
   text-align: center;
   text-decoration: none;
   user-select: none;
@@ -101,8 +109,10 @@ h1 {
   transition: all 150ms ease-in-out;
 }
 
+
+
 #signInButton:hover {
-  background-color: #78866b;
+  background-color: #A29C8F;
 }
 
 #signInButton:active {
@@ -116,6 +126,46 @@ h1 {
   transition: all 150ms ease-in-out;
 }
 
+#sendIt {
+  align-items: center;
+  justify-content: center;
+  font-family: "Quicksand";
+  font-weight: 600;
+  font-size: 1rem;
+  height: 4rem;
+  box-shadow: #4b4949 0.2vw 0.3vh 0 0;
+  border: 1px solid #011f26;
+  border-radius: 1.5rem;
+  background-color: #A29B8F;
+  cursor: pointer;
+  display: inline-block;
+  width: 0;
+  padding: 0;
+  margin-left: 0;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: width 0.4s ease-in-out, opacity 0.3s ease-in-out,
+    padding 0.4s ease-in-out, margin-left 0.4s ease-in-out, transform 150ms ease-in-out, box-shadow 150ms ease-in-out, background-color 150ms ease-in-out;
+}
+
+#sendIt:hover {
+  background-color: #bdb8af;
+}
+
+#sendItArrow {
+  width: 1rem;
+}
+
+#sendIt.visible {
+  display: flex;
+  width: 4rem;
+  padding: 0 1rem;
+  margin-left: 0.6rem;
+  opacity: 1;
+}
+
+
 @media (max-width: 768px) {
   #signInButton,
   #emailInput {
@@ -128,9 +178,9 @@ h1 {
     font-size: 16.2vw;
   }
 
-  #signInButton{
+  #signInButton {
     border-radius: 2.4vh;
-    box-shadow: #393737 1vw 0.6vh 0 0;
+    box-shadow: #4b4949 1vw 0.6vh 0 0;
   }
 }
 
@@ -152,5 +202,5 @@ h1 {
 
 .footerText {
   font-size: calc(0.5rem + 0.3vw);
-  color: #7393B3;
+  color: #7393b3;
 }
