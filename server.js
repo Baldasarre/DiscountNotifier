@@ -7,6 +7,7 @@ const { v4: uuidv4 } = require("uuid");
 const nodemailer = require("nodemailer");
 const cookieParser = require("cookie-parser");
 const rateLimit = require('express-rate-limit'); 
+const authenticate = require('./middleware/authenticate');
 
 const app = express();
 const PORT = 3000;
@@ -33,6 +34,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// ... (sendEmail ve generateCode fonksiyonları burada değişmeden kalır) ...
 function sendEmail(to, code, type = "verify") {
   const subject =
     type === "login" ? "Giriş Kodunuz" : "E-Posta Doğrulama Kodunuz";
@@ -57,38 +59,27 @@ function generateCode() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+
+// ... ( /api/save ve /api/verify-code endpoint'leri burada değişmeden kalır) ...
 app.post("/api/save", apiLimiter, (req, res) => { 
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: "E-posta eksik." });
-
   let users = [];
   try {
     users = JSON.parse(fs.readFileSync("users.json", "utf8"));
   } catch {
     users = [];
   }
-
   const code = generateCode();
   const now = new Date().toISOString();
   const ip = req.ip;
   const userAgent = req.headers["user-agent"] || null;
   const referer = req.headers["referer"] || null;
   let message = "";
-
   const userIndex = users.findIndex((u) => u.email === email);
-
   if (userIndex === -1) {
     const newUser = {
-      id: uuidv4(),
-      email,
-      createdAt: now,
-      ip,
-      userAgent,
-      referer,
-      verified: false,
-      code,
-      codeSentAt: now,
-      attempts: 0,
+      id: uuidv4(), email, createdAt: now, ip, userAgent, referer, verified: false, code, codeSentAt: now, attempts: 0,
     };
     users.push(newUser);
     message = "Doğrulama için kod gönderildi.";
@@ -106,72 +97,58 @@ app.post("/api/save", apiLimiter, (req, res) => {
       sendEmail(email, code, "verify");
     }
   }
-
   fs.writeFileSync("users.json", JSON.stringify(users, null, 2));
   res.json({ success: true, message });
 });
-
 app.post("/api/verify-code", apiLimiter, (req, res) => { 
   const { email, code } = req.body;
   if (!email || !code)
     return res.status(400).json({ error: "E-posta ve kod gerekli." });
-
   let users = [];
   try {
     users = JSON.parse(fs.readFileSync("users.json", "utf8"));
   } catch {
     return res.status(500).json({ error: "Veri okunamadı." });
   }
-
   const user = users.find((u) => u.email === email);
   if (!user) return res.status(404).json({ error: "Kullanıcı bulunamadı." });
-
   const CODE_VALIDITY_SECONDS = 300;
   const sentTime = new Date(user.codeSentAt).getTime();
   const now = Date.now();
   const timeElapsed = (now - sentTime) / 1000;
-
   if (timeElapsed > CODE_VALIDITY_SECONDS) {
     return res.status(400).json({ error: "Kodun süresi doldu." });
   }
-
   if (user.attempts >= 5) {
-    return res
-      .status(403)
-      .json({ error: "Çok fazla hatalı deneme. Lütfen tekrar kod alın." });
+    return res.status(403).json({ error: "Çok fazla hatalı deneme. Lütfen tekrar kod alın." });
   }
-
   if (user.code !== code) {
     user.attempts += 1;
     fs.writeFileSync("users.json", JSON.stringify(users, null, 2));
-    return res
-      .status(400)
-      .json({
-        error: "Kod hatalı. Kalan deneme hakkı: " + (5 - user.attempts),
-      });
+    return res.status(400).json({ error: "Kod hatalı. Kalan deneme hakkı: " + (5 - user.attempts), });
   }
-
   user.verified = true;
   user.lastLoginAt = new Date().toISOString();
   delete user.code;
   delete user.codeSentAt;
   user.attempts = 0;
-
   fs.writeFileSync("users.json", JSON.stringify(users, null, 2));
-
   res.cookie("sessionId", user.id, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     maxAge: 1000 * 60 * 60 * 24 * 14,
     sameSite: "Lax",
   });
-
   res.json({ success: true, message: "Kod doğru. Giriş başarılı." });
 });
 
-app.post("/api/update-user", (req, res) => {
-  const { email, gender, brands } = req.body;
-  if (!email || !gender) {
+
+app.post("/api/update-user", authenticate, (req, res) => {
+ 
+  const { email } = req.user;
+  const { gender, brands } = req.body;
+
+  if (!gender) {
     return res.status(400).json({ error: "Eksik bilgi var." });
   }
 
@@ -192,9 +169,8 @@ app.post("/api/update-user", (req, res) => {
   res.json({ success: true, message: "Bilgiler başarıyla güncellendi." });
 });
 
-app.get("/api/user-info", (req, res) => {
-  const email = req.query.email;
-  if (!email) return res.status(400).json({ error: "Email gerekli." });
+app.get("/api/user-info", authenticate, (req, res) => {
+  const { email } = req.user;
 
   let users = [];
   try {

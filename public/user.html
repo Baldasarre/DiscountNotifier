@@ -22,36 +22,45 @@
   </head>
 
   <body>
-    <form id="form">
-      <div id="userPageLogo"><img id="logoItSelf" src="Logo1.png" alt=""></div>
-      <div id="welcomeMesDiv">
-        <h1 id="welcomeMessage" class="element-transition element-hidden">Hangi kategorileri takip etmek istersin?</h1>
+    <div id="userPageLogo"><img id="logoItSelf" src="Logo1.png" alt="" /></div>
+    <div id="tabsContainer">
+      <div id="tabBox" class="element-hidden">
+        <button id="itemTrackTab" class="tabButton">Ürün Takibi</button>
+        <button id="followPageTab" class="tabButton">Marka Takibi</button>
       </div>
-
+    </div>
+    <form id="form">
       <div class="genderDiv">
-        <label class="checkboxGender"
-          ><input
-            class="checkboxGenderInput"
-            type="checkbox"
-            name="gender"
-            value="female"
-          />Kadın</label
-        >
-        <label class="checkboxGender"
-          ><input
-            class="checkboxGenderInput"
-            type="checkbox"
-            name="gender"
-            value="male"
-          />Erkek</label
-        ><label class="checkboxGender"
-          ><input
-            class="checkboxGenderInput"
-            type="checkbox"
-            name="gender"
-            value="both"
-          />Hepsi</label
-        >
+        <div id="welcomeMesDiv">
+          <h1 id="welcomeMessage" class="element-transition element-hidden">
+            Hangi kategorileri takip etmek istersin?
+          </h1>
+        </div>
+        <div id="genderButtonsDiv">
+          <label class="checkboxGender"
+            ><input
+              class="checkboxGenderInput"
+              type="checkbox"
+              name="gender"
+              value="female"
+            />Kadın</label
+          >
+          <label class="checkboxGender"
+            ><input
+              class="checkboxGenderInput"
+              type="checkbox"
+              name="gender"
+              value="male"
+            />Erkek</label
+          ><label class="checkboxGender"
+            ><input
+              class="checkboxGenderInput"
+              type="checkbox"
+              name="gender"
+              value="both"
+            />Hepsi</label
+          >
+        </div>
       </div>
       <div id="buttonsDiv">
         <div id="linkBoxParrent">
@@ -60,119 +69,160 @@
               <input
                 class="linkInput"
                 type="url"
-                placeholder="Takip etmek istediğin ürünün linkini buraya yapıştırabilirsin."
+                placeholder="Takip etmek istediğin ürünün linkini buraya yapıştır."
               />
               <button class="addButton">Ekle</button>
             </div>
-            <div class="addedItemImgs">
-              <div class="addedItemImgBox"><button class="deleteItemButton"><img style="
-    width: 0.8rem;" src="close-icon.png" alt=""></button><img  class="itemImg" src="1.jpg" alt=""></div>
-              <div class="addedItemImgBox"><button class="deleteItemButton"><img style="
-    width: 0.8rem;" src="close-icon.png" alt=""></button><img  class="itemImg" src="3.jpg" alt=""></div>
-              <div class="addedItemImgBox"><button class="deleteItemButton"><img style="
-    width: 0.8rem;" src="close-icon.png" alt=""></button><img  class="itemImg" src="2.jpg" alt=""></div>
-              <div class="addedItemImgBox"><button class="deleteItemButton"><img style="
-    width: 0.8rem;" src="close-icon.png" alt=""></button><img  class="itemImg" src="4.jpg" alt=""></div>
-              <div class="addedItemImgBox"><button class="deleteItemButton"><img style="
-    width: 0.8rem;" src="close-icon.png" alt=""></button><img  class="itemImg" src="5.jpg" alt=""></div>
-              <div class="addedItemImgBox"><button class="deleteItemButton"><img style="
-    width: 0.8rem;" src="close-icon.png" alt=""></button><img  class="itemImg" src="6.jpg" alt=""></div>
-              <div class="addedItemImgBox"><button class="deleteItemButton"><img style="
-    width: 0.8rem;" src="close-icon.png" alt=""></button><img  class="itemImg" src="7.jpg" alt=""></div>
+            <div class="addedItemBoxes">
+              <div class="addedItemImgBox">
+                <img class="itemImg" src="1.jpg" alt="" />
+                <div>
+                  <img src="zara.png" alt="" style="height: 5rem" />
+                  <h1
+                    style="
+                      font-family: 'Quicksand';
+                      font-size: 1rem;
+                      font-weight: 400;
+                      padding-left: 1rem;
+                    "
+                  >
+                    YIKANMIŞ KAPİTONE CEKET
+                  </h1>
+                  <h1
+                    style="
+                      font-family: 'Quicksand';
+                      font-size: 1rem;
+                      font-weight: 400;
+                      padding-left: 1rem;
+                    "
+                  >
+                    Eklenme Tarihi: 07.08.2025
+                  </h1>
+                  <h1
+                    style="
+                      font-family: 'Quicksand';
+                      font-size: 1rem;
+                      font-weight: 400;
+                      padding-left: 1rem;
+                    "
+                  >
+                    Eklendiği tarihteki fiyatı: 940,00 TL
+                  </h1>
+                  <div id="addedItemImgBoxButtons" style="display: flex">
+                    <button id="goToTheProduct" class="itemButtons">
+                      Ürüne Git
+                    </button>
+                    <button id="removeItem" class="itemButtons">Kaldır</button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      <div id="brandBoxInstruction">
-            <h1 class="instruction">İndirim sayfasının tamamını takip etmek istediğin markaları seçebilirsin.</h1>
+
+        <div id="brandTrackingDiv">
+          <div id="brandBoxInstruction">
+            <h1 class="instruction">
+              İndirim sayfasının tamamını takip etmek istediğin markaları
+              seçebilirsin.
+            </h1>
           </div>
 
-        <div id="brandButtons">
-         
-          <div class="buttonTwins">
-            <label class="checkboxLabel"
-              ><input
-                class="checkboxBrand"
-                type="checkbox"
-                name="brands"
-                value="Zara" /><img
-                class="brandLogos"
-                src="zara.png"
-                alt="Zara"
-            /></label>
-            <label class="checkboxLabel"
-              ><input
-                class="checkboxBrand"
-                type="checkbox"
-                name="brands"
-                value="Mango" /><img
-                class="brandLogos"
-                src="mango.png"
-                alt="Zara"
-            /></label>
+          <div id="brandButtons">
+            <div class="buttonTwins">
+              <label class="checkboxLabel"
+                ><input
+                  class="checkboxBrand"
+                  type="checkbox"
+                  name="brands"
+                  value="Zara" /><img
+                  class="brandLogos"
+                  src="zara.png"
+                  alt="Zara"
+              /></label>
+              <label class="checkboxLabel"
+                ><input
+                  class="checkboxBrand"
+                  type="checkbox"
+                  name="brands"
+                  value="Mango" /><img
+                  class="brandLogos"
+                  src="mango.png"
+                  alt="Zara"
+              /></label>
+            </div>
+            <div class="buttonTwins">
+              <label class="checkboxLabel"
+                ><input
+                  class="checkboxBrand"
+                  type="checkbox"
+                  name="brands"
+                  value="Massimo_Dutti" /><img
+                  class="brandLogos"
+                  src="/Massimo_Dutti.png"
+                  alt="MassimoDutti"
+              /></label>
+              <label class="checkboxLabel"
+                ><input
+                  class="checkboxBrand"
+                  type="checkbox"
+                  name="brands"
+                  value="Oysho" /><img
+                  class="brandLogos"
+                  src="/oysho.png"
+                  alt="Oysho"
+              /></label>
+            </div>
+            <div class="buttonTwins">
+              <label class="checkboxLabel"
+                ><input
+                  class="checkboxBrand"
+                  type="checkbox"
+                  name="brands"
+                  value="Stradivarius" /><img
+                  class="brandLogos"
+                  src="/stradivarius.png"
+                  alt="Stradivarius"
+              /></label>
+              <label class="checkboxLabel"
+                ><input
+                  class="checkboxBrand"
+                  type="checkbox"
+                  name="brands"
+                  value="Bershka" /><img
+                  class="brandLogos"
+                  src="/bershka.png"
+                  alt="Bershka"
+              /></label>
+            </div>
+            <div class="buttonTwins">
+              <label class="checkboxLabel"
+                ><input
+                  class="checkboxBrand"
+                  type="checkbox"
+                  name="brands"
+                  value="H&M" /><img class="brandLogos" src="/hm.png" alt="HM"
+              /></label>
+              <label class="checkboxLabel"
+                ><input
+                  class="checkboxBrand"
+                  type="checkbox"
+                  name="brands"
+                  value="Pull&Bear" /><img
+                  class="brandLogos"
+                  src="/pb.png"
+                  alt="PullBear"
+              /></label>
+            </div>
           </div>
-          <div class="buttonTwins">
-            <label class="checkboxLabel"
-              ><input
-                class="checkboxBrand"
-                type="checkbox"
-                name="brands"
-                value="Massimo_Dutti" /><img
-                class="brandLogos"
-                src="/Massimo_Dutti.png"
-                alt="MassimoDutti"
-            /></label>
-            <label class="checkboxLabel"
-              ><input
-                class="checkboxBrand"
-                type="checkbox"
-                name="brands"
-                value="Oysho" /><img
-                class="brandLogos"
-                src="/oysho.png"
-                alt="Oysho"
-            /></label>
+
+          <div id="brandBoxInstruction2">
+            <h1 class="instruction">
+              Takip ettiğin markalar indirim sayfalarına yeni ürünler
+              eklediğinde bu ürünler aşağıda belirecek.
+            </h1>
           </div>
-          <div class="buttonTwins">
-            <label class="checkboxLabel"
-              ><input
-                class="checkboxBrand"
-                type="checkbox"
-                name="brands"
-                value="Stradivarius" /><img
-                class="brandLogos"
-                src="/stradivarius.png"
-                alt="Stradivarius"
-            /></label>
-            <label class="checkboxLabel"
-              ><input
-                class="checkboxBrand"
-                type="checkbox"
-                name="brands"
-                value="Bershka" /><img
-                class="brandLogos"
-                src="/bershka.png"
-                alt="Bershka"
-            /></label>
-          </div>
-          <div class="buttonTwins">
-            <label class="checkboxLabel"
-              ><input
-                class="checkboxBrand"
-                type="checkbox"
-                name="brands"
-                value="H&M" /><img class="brandLogos" src="/hm.png" alt="HM"
-            /></label>
-            <label class="checkboxLabel"
-              ><input
-                class="checkboxBrand"
-                type="checkbox"
-                name="brands"
-                value="Pull&Bear" /><img
-                class="brandLogos"
-                src="/pb.png"
-                alt="PullBear"
-            /></label>
-          </div>
+          <div id="brandsItemsDisplay"></div>
         </div>
       </div>
       <footer class="footer">
@@ -185,3 +235,4 @@
     <script src="user.js"></script>
   </body>
 </html>
+
