@@ -19,12 +19,9 @@ async function handleSubmission() {
       return;
     }
     try {
-      const response = await fetch("/api/save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: value }),
-      });
+      const response = await fetchWithCsrf("/api/save", 'POST', { email: value });
       const result = await response.json();
+
       if (result.success) {
         currentEmail = value;
         localStorage.setItem("userEmail", currentEmail);
@@ -33,7 +30,7 @@ async function handleSubmission() {
         emailInput.placeholder = "6 haneli kodu girin";
         mode = "code";
       } else {
-        showMessage("Sunucu hatası: " + result.error);
+        showMessage("Sunucu hatası: " + (result.error || "Bilinmeyen hata"));
       }
     } catch (err) {
       showErrMessage("Bağlantı hatası!");
@@ -45,12 +42,9 @@ async function handleSubmission() {
       return;
     }
     try {
-      const response = await fetch("/api/verify-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: currentEmail, code }),
-      });
+      const response = await fetchWithCsrf("/api/verify-code", 'POST', { email: currentEmail, code });
       const result = await response.json();
+
       if (result.success) {
         showMessage("Başarıyla giriş yapıldı!");
         sendItButton.disabled = true;
@@ -92,10 +86,8 @@ window.addEventListener("DOMContentLoaded", async () => {
 
 signInButton.addEventListener("click", (event) => {
   event.preventDefault();
-
   signInButton.classList.add("buttonClicked");
   setTimeout(() => signInButton.classList.remove("buttonClicked"), 150);
-
   setTimeout(() => {
     signInButton.style.display = "none";
     emailInput.style.display = "inline-block";

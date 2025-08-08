@@ -11,21 +11,17 @@ const itemTrackTab = document.getElementById("itemTrackTab");
 const followPageTab = document.getElementById("followPageTab");
 const itemTrackSection = document.getElementById("linkBoxParrent");
 const brandTrackingDiv = document.getElementById("brandTrackingDiv"); 
-
-// --- User Data ---
 const email = localStorage.getItem("userEmail");
-const prefix = email?.split("@")[0] || "Kullanıcı";
-// --- State Variable ---
+
 let selectedGender = null;
 
-// --- Initial UI Setup ---
 welcomeMessage.classList.add("element-transition");
 genderDiv.classList.add("element-transition");
 brandSection.classList.add("element-transition");
 brandSection.style.display = "none";
 brandSection.classList.add("element-hidden");
 
-// --- Helper Functions ---
+
 function debounce(func, delay) {
   let timeout;
   return function (...args) {
@@ -35,8 +31,8 @@ function debounce(func, delay) {
   };
 }
 
-async function savePreferences() {
 
+async function savePreferences() {
   if (!selectedGender) {
     console.warn("Kaydetme işlemi için cinsiyet seçimi gerekli.");
     return;
@@ -46,21 +42,16 @@ async function savePreferences() {
     .filter((cb) => cb.checked)
     .map((cb) => cb.value);
 
-  
   const payload = {
     gender: selectedGender,
     brands: selectedBrands,
   };
 
   try {
-    const res = await fetch("/api/update-user", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    const res = await fetchWithCsrf("/api/update-user", 'POST', payload);
     const result = await res.json();
     if (result.success) {
-      console.log("Tercihler 3 saniye sonra otomatik olarak kaydedildi.", payload);
+      console.log("Tercihler otomatik olarak kaydedildi.", payload);
     } else {
       console.error("Sunucu hatası:", result.error);
     }
@@ -75,8 +66,7 @@ const debouncedSave = debounce(savePreferences, 3000);
 window.addEventListener("DOMContentLoaded", async () => {
   try {
     if (!email) {
-      form.style.opacity = 1;
-      welcomeMessage.classList.remove("element-hidden");
+      window.location.href = '/index.html';
       return;
     }
 
@@ -91,15 +81,13 @@ window.addEventListener("DOMContentLoaded", async () => {
         brandSection.style.display = "flex";
         brandSection.classList.remove("element-hidden");
         tabBox.classList.remove("element-hidden");
-
         if (tabBox.classList.contains("tab-2-active")) {
              itemTrackSection.style.display = "none";
-             brandTrackingDiv.style.display = "flex"; 
+             brandTrackingDiv.style.display = "flex";
         } else {
              itemTrackSection.style.display = "flex";
              brandTrackingDiv.style.display = "none";
         }
-
       } else {
         welcomeMessage.classList.remove("element-hidden");
       }
@@ -116,7 +104,6 @@ window.addEventListener("DOMContentLoaded", async () => {
         }
       });
     } else {
-        // Oturum geçersizse veya bir hata varsa, giriş sayfasına yönlendir.
         console.error("Kullanıcı bilgileri alınamadı:", data.error);
         window.location.href = '/index.html';
     }
@@ -130,11 +117,12 @@ window.addEventListener("DOMContentLoaded", async () => {
 
 genderButtons.forEach((label) => {
   label.addEventListener("click", () => {
-    selectedGender = label.textContent.trim();
+    const input = label.querySelector('input');
+    selectedGender = input.value;
+    savePreferences();
+
     welcomeMessage.classList.add("element-hidden");
     genderDiv.classList.add("element-hidden");
-    
-    savePreferences();
 
     setTimeout(() => {
       genderDiv.style.display = "none";
@@ -142,7 +130,6 @@ genderButtons.forEach((label) => {
       tabBox.classList.remove("element-hidden");
       itemTrackSection.style.display = "flex";
       brandTrackingDiv.style.display = "none";
-
       requestAnimationFrame(() => {
         brandSection.classList.remove("element-hidden");
       });
@@ -163,30 +150,22 @@ brandCheckboxes.forEach((checkbox) => {
 });
 
 const addedItemsContainer = document.querySelector(".addedItemBoxes");
-
 addedItemsContainer.addEventListener("click", function (event) {
   const deleteButton = event.target.closest("#removeItem");
   const itemBox = event.target.closest(".addedItemImgBox");
   if (deleteButton) {
-    console.log("Silme butonuna tıklandı.");
-    if (itemBox) {
-      itemBox.remove();
-    }
+    if (itemBox) itemBox.remove();
   } else if (itemBox) {
-    console.log("Ürün kutusuna tıklandı! Gelecekte burada ürün linkine yönlendirme yapılacak.");
+    console.log("Ürün kutusuna tıklandı!");
   }
 });
 
-
-
 tabBox.classList.remove("tab-2-active");
-
 itemTrackTab.addEventListener("click", () => {
   tabBox.classList.remove("tab-2-active");
   itemTrackSection.style.display = "flex";
   brandTrackingDiv.style.display = "none";
 });
-
 followPageTab.addEventListener("click", () => {
   tabBox.classList.add("tab-2-active");
   itemTrackSection.style.display = "none";

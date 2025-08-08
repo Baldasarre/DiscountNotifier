@@ -1,5 +1,5 @@
 .env
-users.json
+kunto.db
 node_modules/
 .vscode/
 *.log
