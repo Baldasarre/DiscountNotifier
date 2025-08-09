@@ -74,48 +74,32 @@
               <button class="addButton">Ekle</button>
             </div>
             <div class="addedItemBoxes">
-              <div class="addedItemImgBox">
+
+
+              <div class="addedItemBox">
                 <img class="itemImg" src="1.jpg" alt="" />
-                <div>
-                  <img src="zara.png" alt="" style="height: 5rem" />
-                  <h1
-                    style="
-                      font-family: 'Quicksand';
-                      font-size: 1rem;
-                      font-weight: 400;
-                      padding-left: 1rem;
-                    "
-                  >
+                <div class="addedItemButtonsAndInfoBox">
+                  <div class="addedItemInfoBox">
+                    <img class="itemBrandImg" src="zara.png" alt=""  />
+                    <button id="removeItem"><img id="removeItemImg" src="close-icon.png" alt=""></button>
+                  </div>
+                  <h1 class="itemTitle">
                     YIKANMIŞ KAPİTONE CEKET
                   </h1>
-                  <h1
-                    style="
-                      font-family: 'Quicksand';
-                      font-size: 1rem;
-                      font-weight: 400;
-                      padding-left: 1rem;
-                    "
-                  >
-                    Eklenme Tarihi: 07.08.2025
+                  <h1 class="itemDiscountStatus">
+                    ÜRÜN HENÜZ İNDİRİME GİRMEDİ
                   </h1>
-                  <h1
-                    style="
-                      font-family: 'Quicksand';
-                      font-size: 1rem;
-                      font-weight: 400;
-                      padding-left: 1rem;
-                    "
-                  >
-                    Eklendiği tarihteki fiyatı: 940,00 TL
-                  </h1>
-                  <div id="addedItemImgBoxButtons" style="display: flex">
+                  <p class="itemInfo">Eklendiği Fiyat: 940,00 TL</p>
+                  <div class="addedItemImgBoxButtons">
                     <button id="goToTheProduct" class="itemButtons">
                       Ürüne Git
                     </button>
-                    <button id="removeItem" class="itemButtons">Kaldır</button>
+                    
                   </div>
                 </div>
               </div>
+
+
             </div>
           </div>
         </div>
@@ -225,13 +209,13 @@
           <div id="brandsItemsDisplay"></div>
         </div>
       </div>
-      <footer class="footer">
+      
+    </form>
+<footer class="footer">
         <div class="footerDiv">
           <p class="footerText">Tüm hakları saklıdır © 2025</p>
         </div>
       </footer>
-    </form>
-
     <script src="utils.js"></script>
     <script src="user.js"></script>
   </body>

@@ -1,5 +1,7 @@
 .env
 kunto.db
+kunto.db-journal
+kunto.db-wal
 node_modules/
 .vscode/
 *.log

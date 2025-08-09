@@ -6,6 +6,7 @@ const cookieParser = require("cookie-parser");
 const rateLimit = require('express-rate-limit'); 
 const csrf = require('csurf');
 const userRoutes = require('./routes/user.routes'); 
+const helmet = require('helmet');
 const app = express();
 const PORT = 3000;
 
