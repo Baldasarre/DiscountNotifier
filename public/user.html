@@ -3,26 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <title>kunto</title>
-
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Playwrite+CU:wght@100..400&family=Roboto+Slab:wght@100..900&family=Cabin:ital,wght@0,400..700;1,400..700&display=swap"
-      rel="stylesheet"
-    />
-
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Mooli&family=Quicksand:wght@300..700&display=swap"
-      rel="stylesheet"
-    />
-
+    <link href="https://fonts.googleapis.com/css2?family=Playwrite+CU:wght@100..400&family=Roboto+Slab:wght@100..900&family=Cabin:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Mooli&family=Quicksand:wght@300..700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="user.css" />
   </head>
-
   <body>
-    <div id="userPageLogo"><img id="logoItSelf" src="Logo1.png" alt="" /></div>
+    <div id="userPageLogo"><img id="logoItSelf" src="Images/Logo1.png" alt="" /></div>
     <div id="tabsContainer">
       <div id="tabBox" class="element-hidden">
         <button id="itemTrackTab" class="tabButton">Ürün Takibi</button>
@@ -37,186 +25,38 @@
           </h1>
         </div>
         <div id="genderButtonsDiv">
-          <label class="checkboxGender"
-            ><input
-              class="checkboxGenderInput"
-              type="checkbox"
-              name="gender"
-              value="female"
-            />Kadın</label
-          >
-          <label class="checkboxGender"
-            ><input
-              class="checkboxGenderInput"
-              type="checkbox"
-              name="gender"
-              value="male"
-            />Erkek</label
-          ><label class="checkboxGender"
-            ><input
-              class="checkboxGenderInput"
-              type="checkbox"
-              name="gender"
-              value="both"
-            />Hepsi</label
-          >
+          <label class="checkboxGender"><input class="checkboxGenderInput" type="checkbox" name="gender" value="female"/>Kadın</label>
+          <label class="checkboxGender"><input class="checkboxGenderInput" type="checkbox" name="gender" value="male"/>Erkek</label>
+          <label class="checkboxGender"><input class="checkboxGenderInput" type="checkbox" name="gender" value="both"/>Hepsi</label>
         </div>
       </div>
       <div id="buttonsDiv">
         <div id="linkBoxParrent">
           <div class="linkBox">
             <div id="inputDiv">
-              <input
-                class="linkInput"
-                type="url"
-                placeholder="Takip etmek istediğin ürünün linkini buraya yapıştır."
-              />
+              <input class="linkInput" type="url" placeholder="Takip etmek istediğin ürünün linkini buraya yapıştır."/>
               <button class="addButton">Ekle</button>
             </div>
             <div class="addedItemBoxes">
-
-
-              <div class="addedItemBox">
-                <img class="itemImg" src="1.jpg" alt="" />
-                <div class="addedItemButtonsAndInfoBox">
-                  <div class="addedItemInfoBox">
-                    <img class="itemBrandImg" src="zara.png" alt=""  />
-                    <button id="removeItem"><img id="removeItemImg" src="close-icon.png" alt=""></button>
-                  </div>
-                  <h1 class="itemTitle">
-                    YIKANMIŞ KAPİTONE CEKET
-                  </h1>
-                  <h1 class="itemDiscountStatus">
-                    ÜRÜN HENÜZ İNDİRİME GİRMEDİ
-                  </h1>
-                  <p class="itemInfo">Eklendiği Fiyat: 940,00 TL</p>
-                  <div class="addedItemImgBoxButtons">
-                    <button id="goToTheProduct" class="itemButtons">
-                      Ürüne Git
-                    </button>
-                    
-                  </div>
-                </div>
               </div>
-
-
-            </div>
           </div>
         </div>
-
         <div id="brandTrackingDiv">
           <div id="brandBoxInstruction">
-            <h1 class="instruction">
-              İndirim sayfasının tamamını takip etmek istediğin markaları
-              seçebilirsin.
-            </h1>
+            <h1 class="instruction">İndirim sayfasının tamamını takip etmek istediğin markaları seçebilirsin.</h1>
           </div>
-
           <div id="brandButtons">
-            <div class="buttonTwins">
-              <label class="checkboxLabel"
-                ><input
-                  class="checkboxBrand"
-                  type="checkbox"
-                  name="brands"
-                  value="Zara" /><img
-                  class="brandLogos"
-                  src="zara.png"
-                  alt="Zara"
-              /></label>
-              <label class="checkboxLabel"
-                ><input
-                  class="checkboxBrand"
-                  type="checkbox"
-                  name="brands"
-                  value="Mango" /><img
-                  class="brandLogos"
-                  src="mango.png"
-                  alt="Zara"
-              /></label>
             </div>
-            <div class="buttonTwins">
-              <label class="checkboxLabel"
-                ><input
-                  class="checkboxBrand"
-                  type="checkbox"
-                  name="brands"
-                  value="Massimo_Dutti" /><img
-                  class="brandLogos"
-                  src="/Massimo_Dutti.png"
-                  alt="MassimoDutti"
-              /></label>
-              <label class="checkboxLabel"
-                ><input
-                  class="checkboxBrand"
-                  type="checkbox"
-                  name="brands"
-                  value="Oysho" /><img
-                  class="brandLogos"
-                  src="/oysho.png"
-                  alt="Oysho"
-              /></label>
-            </div>
-            <div class="buttonTwins">
-              <label class="checkboxLabel"
-                ><input
-                  class="checkboxBrand"
-                  type="checkbox"
-                  name="brands"
-                  value="Stradivarius" /><img
-                  class="brandLogos"
-                  src="/stradivarius.png"
-                  alt="Stradivarius"
-              /></label>
-              <label class="checkboxLabel"
-                ><input
-                  class="checkboxBrand"
-                  type="checkbox"
-                  name="brands"
-                  value="Bershka" /><img
-                  class="brandLogos"
-                  src="/bershka.png"
-                  alt="Bershka"
-              /></label>
-            </div>
-            <div class="buttonTwins">
-              <label class="checkboxLabel"
-                ><input
-                  class="checkboxBrand"
-                  type="checkbox"
-                  name="brands"
-                  value="H&M" /><img class="brandLogos" src="/hm.png" alt="HM"
-              /></label>
-              <label class="checkboxLabel"
-                ><input
-                  class="checkboxBrand"
-                  type="checkbox"
-                  name="brands"
-                  value="Pull&Bear" /><img
-                  class="brandLogos"
-                  src="/pb.png"
-                  alt="PullBear"
-              /></label>
-            </div>
-          </div>
-
           <div id="brandBoxInstruction2">
-            <h1 class="instruction">
-              Takip ettiğin markalar indirim sayfalarına yeni ürünler
-              eklediğinde bu ürünler aşağıda belirecek.
-            </h1>
+            <h1 class="instruction">Takip ettiğin markalar indirim sayfalarına yeni ürünler eklediğinde bu ürünler aşağıda belirecek.</h1>
           </div>
           <div id="brandsItemsDisplay"></div>
         </div>
       </div>
-      
     </form>
-<footer class="footer">
-        <div class="footerDiv">
-          <p class="footerText">Tüm hakları saklıdır © 2025</p>
-        </div>
-      </footer>
-    <script src="utils.js"></script>
-    <script src="user.js"></script>
+    <footer class="footer">
+      <div class="footerDiv"><p class="footerText">Tüm hakları saklıdır © 2025</p></div>
+    </footer>
+    <script type="module" src="user.js"></script>
   </body>
 </html>

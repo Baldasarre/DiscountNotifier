@@ -312,7 +312,11 @@ h2 {
 #brandButtons {
   display: flex;
   flex-direction: row;
+  justify-content: center;
   align-items: center;
+  gap: 0.8rem;
+  max-width: 50rem;
+  margin: 0 auto;
 }
 
 #brandBoxInstruction2 {
