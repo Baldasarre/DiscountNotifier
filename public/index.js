@@ -1,3 +1,5 @@
+import { fetchWithCsrf } from './utils.js';
+
 const signInButton = document.getElementById("signInButton");
 const emailInput = document.getElementById("emailInput");
 const sendItButton = document.getElementById("sendIt");

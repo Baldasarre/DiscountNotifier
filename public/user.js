@@ -1,7 +1,3 @@
-// public/user.js
-
-console.log("user.js modülü başarıyla yüklendi ve çalışmaya başladı.");
-
 import { renderBrandButtons, renderProductCards, userTrackedProducts } from './ui-components.js';
 import { fetchWithCsrf } from './utils.js';
 
@@ -22,20 +18,6 @@ const addedItemsContainer = document.querySelector(".addedItemBoxes");
 const email = localStorage.getItem("userEmail");
 let selectedGender = null;
 
-// --- Helper Functions ---
-function addBrandCheckboxListeners() {
-    const brandCheckboxes = document.querySelectorAll(".checkboxBrand");
-    brandCheckboxes.forEach((checkbox) => {
-        checkbox.addEventListener("change", () => {
-            const label = checkbox.closest(".checkboxLabel");
-            label.style.backgroundColor = checkbox.checked ? "#f88379" : "transparent";
-            debouncedSave();
-        });
-    });
-}
-
-const debouncedSave = debounce(savePreferences, 3000);
-
 function debounce(func, delay) {
   let timeout;
   return function (...args) {
@@ -44,26 +26,55 @@ function debounce(func, delay) {
   };
 }
 
-async function savePreferences() {
-  if (!selectedGender) return;
+const debouncedBrandSave = debounce(() => savePreferences(false), 3000);
+
+
+function addBrandCheckboxListeners() {
+    const brandCheckboxes = document.querySelectorAll(".checkboxBrand");
+    brandCheckboxes.forEach((checkbox) => {
+        checkbox.addEventListener("change", () => {
+            const label = checkbox.closest(".checkboxLabel");
+            label.style.backgroundColor = checkbox.checked ? "#f88379" : "transparent";
+    
+            debouncedBrandSave();
+        });
+    });
+}
+
+
+async function savePreferences(isGenderSelection = false) {
+
+  if (!isGenderSelection && !selectedGender) return;
+
   const selectedBrands = [...document.querySelectorAll(".checkboxBrand")]
     .filter((cb) => cb.checked).map((cb) => cb.value);
-  const payload = { gender: selectedGender, brands: selectedBrands };
+  
+  const payload = { 
+    gender: selectedGender, 
+    brands: selectedBrands 
+  };
+
   try {
+    console.log("Tercihler kaydediliyor:", payload);
     await fetchWithCsrf("/api/update-user", 'POST', payload);
   } catch (err) {
     console.error("Tercihler kaydedilirken hata:", err);
   }
 }
 
-// --- Main Logic ---
+
+
+
 async function initializePage() {
-  // 1. Önce arayüzü statik/örnek verilerle çiz
+
   renderBrandButtons(brandButtonsContainer);
   addBrandCheckboxListeners();
   renderProductCards(addedItemsContainer, userTrackedProducts);
 
-  // 2. Sunucudan gerçek kullanıcı verisini çek
+
+  brandSection.style.display = 'none';
+  tabBox.style.display = 'none';
+
   try {
     if (!email) {
       window.location.href = "/index.html";
@@ -75,25 +86,31 @@ async function initializePage() {
     if (data.success) {
       selectedGender = data.gender;
       
-      // 3. Veriye göre arayüzü güncelle
+  
       if (selectedGender) {
         genderDiv.style.display = "none";
         welcomeMessage.style.display = "none";
         brandSection.style.display = "flex";
+        tabBox.style.display = 'flex';
         tabBox.classList.remove("element-hidden");
         requestAnimationFrame(() => brandSection.classList.remove("element-hidden"));
+        
+
+        const brandCheckboxes = document.querySelectorAll(".checkboxBrand");
+        brandCheckboxes.forEach((cb) => {
+          if (data.brands.includes(cb.value)) {
+            cb.checked = true;
+            cb.closest(".checkboxLabel").style.backgroundColor = "#f88379";
+          }
+        });
+
       } else {
+        genderDiv.style.display = "flex";
+        welcomeMessage.style.display = "block";
         welcomeMessage.classList.remove("element-hidden");
+        brandSection.style.display = 'none';
+        tabBox.style.display = 'none';
       }
-      
-      // Kayıtlı markaları işaretle
-      const brandCheckboxes = document.querySelectorAll(".checkboxBrand");
-      brandCheckboxes.forEach((cb) => {
-        if (data.brands.includes(cb.value)) {
-          cb.checked = true;
-          cb.closest(".checkboxLabel").style.backgroundColor = "#f88379";
-        }
-      });
 
     } else {
       console.error("Kullanıcı bilgileri alınamadı:", data.error);
@@ -101,20 +118,22 @@ async function initializePage() {
     }
   } catch (err) {
     console.error("Sayfa başlatılırken hata oluştu:", err);
-    welcomeMessage.classList.remove("element-hidden"); // Hata durumunda en azından bir mesaj göster
+    welcomeMessage.classList.remove("element-hidden");
   }
 }
 
-// --- Event Listeners ---
+
 genderButtons.forEach((label) => {
   label.addEventListener("click", () => {
     selectedGender = label.querySelector("input").value;
-    savePreferences();
+    savePreferences(true); 
+
     genderDiv.classList.add("element-hidden");
     welcomeMessage.classList.add("element-hidden");
     setTimeout(() => {
         genderDiv.style.display = "none";
         brandSection.style.display = "flex";
+        tabBox.style.display = "flex";
         tabBox.classList.remove("element-hidden");
         itemTrackSection.style.display = "flex";
         brandTrackingDiv.style.display = "none";
@@ -122,6 +141,7 @@ genderButtons.forEach((label) => {
     }, 400);
   });
 });
+
 
 itemTrackTab.addEventListener("click", () => {
   tabBox.classList.remove("tab-2-active");
@@ -135,5 +155,5 @@ followPageTab.addEventListener("click", () => {
   brandTrackingDiv.style.display = "flex";
 });
 
-// Sayfa yüklendiğinde ana fonksiyonu çalıştır
+
 window.addEventListener("DOMContentLoaded", initializePage);

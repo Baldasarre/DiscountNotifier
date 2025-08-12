@@ -334,11 +334,19 @@ h2 {
 
 .element-transition {
   opacity: 1;
-  transition: opacity 400ms ease-in-out;
+  transform: translateY(0);
+  transition: opacity 400ms ease-in-out, transform 400ms ease-in-out;
 }
 
 .element-hidden {
   opacity: 0;
+  pointer-events: none; 
+  position: absolute; 
+  transform: translateY(20px);
+}
+
+.initially-hidden {
+    display: none;
 }
 
 .linkBox {
@@ -645,3 +653,5 @@ h2 {
     transition: all 130ms ease-in-out;
   }
 }
+
+

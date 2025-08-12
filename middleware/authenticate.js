@@ -15,8 +15,8 @@ function authenticate(req, res, next) {
             return res.status(500).json({ error: "Sunucu tarafında bir hata oluştu." });
         }
 
-        if (!user || !user.verified) {
-            res.clearCookie("sessionId");
+          if (!user || !user.verified) {
+            res.clearCookie("sessionId", { path: '/' });
             return res.status(401).json({ error: "Geçersiz oturum." });
         }
         
