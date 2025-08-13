@@ -1,5 +1,5 @@
 import { renderBrandButtons, renderProductCards, userTrackedProducts } from './ui-components.js';
-import { fetchWithCsrf } from './utils.js';
+import { fetchWithCsrf } from './apis.js';
 
 // --- DOM Element References ---
 const form = document.getElementById("form");
