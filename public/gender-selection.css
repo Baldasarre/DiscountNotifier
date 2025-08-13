@@ -1,0 +1,186 @@
+:root {
+  /* Shadow Variables */
+  --shadow-normal: #413f3f 0.2rem 0.2rem 0 0;
+  --shadow-hover: #422800 1px 1px 0 0;
+  --shadow-dark: #4b4949 0.2rem 0.2rem 0 0;
+  --shadow-light: #dadada 0.2rem 0.2rem 1rem 0.1rem;
+}
+
+html {
+  font-family: "Roboto Slab", "Quicksand", sans-serif;
+  opacity: 0;
+  animation: fadeInPage 0.3s ease-in forwards;
+}
+
+@keyframes fadeInPage {
+  to {
+    opacity: 1;
+  }
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+  height: 100vh;
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 150%;
+  height: 150%;
+  background: linear-gradient(45deg, #f88379, #dcffff, #fffff0, #191970);
+  background-size: 400% 400%;
+  animation: gradientMove 25s ease infinite;
+  z-index: -1;
+  filter: blur(40px);
+  opacity: 0.6;
+  pointer-events: none;
+  will-change: background-position;
+}
+
+@keyframes gradientMove {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+#userPageLogo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 2rem;
+}
+
+#logoItSelf {
+  height: 4vh;
+}
+
+
+
+.genderDiv {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-grow: 1;
+  margin-top: -5vh;
+}
+
+#welcomeMesDiv {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 4rem;
+}
+
+#welcomeMessage {
+  font-family: "Quicksand", sans-serif;
+  will-change: box-shadow, transform;
+  font-weight: 400;
+  font-size: 2.2vh;
+  text-align: center;
+  margin: 0;
+  color: #011f26;
+}
+
+#genderButtonsDiv {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+.checkboxGender {
+  font-family: "Quicksand", sans-serif;
+  will-change: box-shadow, transform;
+  font-weight: 400;
+  font-size: 1.2rem;
+  height: 13vh;
+  margin: 1rem;
+  padding: 0rem 2rem;
+  border: 2px solid #011f26;
+  border-radius: 2.5rem;
+  box-shadow: var(--shadow-normal);
+  width: 15vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 130ms ease-in-out;
+  cursor: pointer;
+  color: #011f26;
+  background-color: transparent;
+}
+
+.checkboxGender:hover {
+  box-shadow: var(--shadow-hover);
+  transform: translate(2px, 2px);
+}
+
+.checkboxGender.selected {
+  background-color: #f88379;
+  box-shadow: var(--shadow-normal);
+}
+
+.checkboxGender.selected:hover {
+  box-shadow: var(--shadow-hover);
+  transform: translate(2px, 2px);
+}
+
+.checkboxGenderInput {
+  display: none;
+}
+
+.footer {
+  position: relative;
+  width: -webkit-fill-available;
+  margin-top: 2vh;
+  padding: 2vh 0;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+.footerDiv {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.footerText {
+  font-size: calc(0.5rem + 0.3vw);
+  color: #7393b3;
+}
+
+/* Page transition effects */
+.page-transition-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.page-transition-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.4s ease-in, transform 0.4s ease-in;
+}
+
+.page-transition-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.page-transition-exit-active {
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+}

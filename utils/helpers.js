@@ -12,14 +12,24 @@ const transporter = nodemailer.createTransport({
 function sendEmail(to, code, type = "verify") {
   const subject = type === "login" ? "Giriş Kodunuz" : "E-Posta Doğrulama Kodunuz";
   const text = `Merhaba!\n\n${type === "login" ? "Giriş" : "Doğrulama"} kodunuz: ${code}\n\nKod 5 dakika geçerlidir.`;
+  
+  console.log(`[DEBUG] E-posta gönderilecek: ${to}`);
+  console.log(`[DEBUG] Kod: ${code}`);
+  console.log(`[DEBUG] Tip: ${type}`);
+  
+  // Geçici olarak email gönderimini devre dışı bırak - sadece console'a yaz
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.log("⚠️  Email servisi yapılandırılmamış - kod console'da gösteriliyor");
+    console.log(`📧 ${to} adresine gönderilecek kod: ${code}`);
+    return;
+  }
+  
   const mailOptions = { 
     from: process.env.EMAIL_USER,
     to, 
     subject, 
     text 
   };
-
-  console.log(`[DEBUG] E-posta şu adrese gönderiliyor: ${to}`);
   
   transporter.sendMail(mailOptions, (error, info) => {
     if (error) {

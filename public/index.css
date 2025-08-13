@@ -1,3 +1,11 @@
+:root {
+  /* Shadow Variables */
+  --shadow-normal: #413f3f 0.2rem 0.2rem 0 0;
+  --shadow-hover: #422800 1px 1px 0 0;
+  --shadow-dark: #4b4949 0.2rem 0.2rem 0 0;
+  --shadow-light: #dadada 0.2rem 0.2rem 1rem 0.1rem;
+}
+
 * {
   padding: 0;
   margin: 0;
@@ -5,7 +13,7 @@
 }
 
 html {
-  font-family: "Roboto Slab", "Quicksand", "Cabin", sans-serif;
+  font-family: "Roboto Slab", "Quicksand", sans-serif;
   background-color: #dcffff;
   opacity: 0;
   animation: fadeInPage 0.3s ease-in forwards;
@@ -84,14 +92,15 @@ h1 {
 
 #signInButton,
 #emailInput {
-  font-family: "Quicksand";
+  font-family: "Quicksand", sans-serif;
+  will-change: box-shadow, transform;
   min-width: 120px;
   width: 36rem;
   height: 4rem;
   background: #f88379;
   border: 2px solid #011f26;
   border-radius: 1.5rem;
-  box-shadow: #4b4949 0.2vw 0.3vh 0 0;
+  box-shadow: var(--shadow-dark);
   border-top: transparent;
   border-left: transparent;
   color: #011f26;
@@ -116,12 +125,12 @@ h1 {
 }
 
 #signInButton:active {
-  box-shadow: #422800 1px 1px 0 0;
+  box-shadow: var(--shadow-hover);
   transform: translate(4px, 4px);
 }
 
 .buttonClicked {
-  box-shadow: #422800 1px 1px 0 0 !important;
+  box-shadow: var(--shadow-hover) !important;
   transform: translate(4px, 4px) !important;
   transition: all 150ms ease-in-out;
 }
@@ -129,11 +138,12 @@ h1 {
 #sendIt {
   align-items: center;
   justify-content: center;
-  font-family: "Quicksand";
+  font-family: "Quicksand", sans-serif;
+  will-change: box-shadow, transform;
   font-weight: 600;
   font-size: 1rem;
   height: 4rem;
-  box-shadow: #4b4949 0.2vw 0.3vh 0 0;
+  box-shadow: var(--shadow-dark);
   border: 1px solid #011f26;
   border-radius: 1.5rem;
   background-color: #A29B8F;
@@ -180,7 +190,7 @@ h1 {
 
   #signInButton {
     border-radius: 2.4vh;
-    box-shadow: #4b4949 1vw 0.6vh 0 0;
+    box-shadow: var(--shadow-dark);
   }
 }
 

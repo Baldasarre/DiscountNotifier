@@ -2,34 +2,36 @@
 <html lang="tr">
   <head>
     <meta charset="UTF-8" />
-    <title>kunto</title>
+    <title>kunto - Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Playwrite+CU:wght@100..400&family=Roboto+Slab:wght@100..900&family=Cabin:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Mooli&family=Quicksand:wght@300..700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="user.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@400;500;600&family=Quicksand:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="user-dashboard.css" />
   </head>
   <body>
     <div id="userPageLogo"><img id="logoItSelf" src="Images/Logo1.png" alt="" /></div>
+    
+    <!-- Menu System -->
+    <div id="menuContainer">
+      <button id="menuButton">
+        ☰ Menü
+      </button>
+      <div id="menuDropdown" class="menu-hidden">
+        <button id="logoutButton" class="menu-item">
+          Çıkış Yap
+        </button>
+        <button id="editCategoryButton" class="menu-item">
+          Kategorini Düzenle
+        </button>
+      </div>
+    </div>
     <div id="tabsContainer">
-      <div id="tabBox" class="element-hidden">
+      <div id="tabBox">
         <button id="itemTrackTab" class="tabButton">Ürün Takibi</button>
         <button id="followPageTab" class="tabButton">Marka Takibi</button>
       </div>
     </div>
     <form id="form">
-      <div class="genderDiv">
-        <div id="welcomeMesDiv">
-          <h1 id="welcomeMessage" class="element-transition element-hidden">
-            Hangi kategorileri takip etmek istersin?
-          </h1>
-        </div>
-        <div id="genderButtonsDiv">
-          <label class="checkboxGender"><input class="checkboxGenderInput" type="checkbox" name="gender" value="female"/>Kadın</label>
-          <label class="checkboxGender"><input class="checkboxGenderInput" type="checkbox" name="gender" value="male"/>Erkek</label>
-          <label class="checkboxGender"><input class="checkboxGenderInput" type="checkbox" name="gender" value="both"/>Hepsi</label>
-        </div>
-      </div>
       <div id="buttonsDiv">
         <div id="linkBoxParrent">
           <div class="linkBox">
@@ -57,6 +59,6 @@
     <footer class="footer">
       <div class="footerDiv"><p class="footerText">Tüm hakları saklıdır © 2025</p></div>
     </footer>
-    <script type="module" src="user.js"></script>
+    <script type="module" src="user-dashboard.js"></script>
   </body>
 </html>

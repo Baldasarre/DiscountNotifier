@@ -36,11 +36,25 @@ router.post("/save", (req, res) => {
       });
     } else {
       const updateSql = `UPDATE users SET code = ?, codeSentAt = ?, attempts = 0 WHERE email = ?`;
-      db.run(updateSql, [code, now, email], (err) => {
-        if (err) return res.status(500).json({ error: "Kullanıcı güncellenemedi." });
-        message = user.verified ? "Giriş için kod gönderildi." : "Doğrulama için kod gönderildi.";
-        sendEmail(email, code, user.verified ? "login" : "verify");
-        res.json({ success: true, message });
+      
+      // Serialize database operation to prevent locks
+      db.serialize(() => {
+        db.run(updateSql, [code, now, email], function(err) {
+          if (err) {
+            console.error("Database update error:", err.message);
+            return res.status(500).json({ error: `Kullanıcı güncellenemedi: ${err.message}` });
+          }
+          
+          if (this.changes === 0) {
+            console.error("No rows updated - user might not exist");
+            return res.status(404).json({ error: "Kullanıcı bulunamadı" });
+          }
+          
+          message = user.verified ? "Giriş için kod gönderildi." : "Doğrulama için kod gönderildi.";
+          console.log("Sending email to:", email, "Code:", code);
+          sendEmail(email, code, user.verified ? "login" : "verify");
+          res.json({ success: true, message });
+        });
       });
     }
   });
@@ -116,6 +130,7 @@ router.get("/check-session", (req, res) => {
     return res.json({ loggedIn: true, email: user.email });
   });
 });
+
 
 // CSRF token endpoint'i de artık burada
 router.get("/csrf-token", (req, res) => {

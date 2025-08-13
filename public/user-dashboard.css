@@ -1,5 +1,13 @@
+:root {
+  /* Shadow Variables */
+  --shadow-normal: #413f3f 0.2rem 0.2rem 0 0;
+  --shadow-hover: #422800 1px 1px 0 0;
+  --shadow-dark: #4b4949 0.2rem 0.2rem 0 0;
+  --shadow-light: #dadada 0.2rem 0.2rem 1rem 0.1rem;
+}
+
 html {
-  font-family: "Roboto Slab", "Quicksand", "Cabin", sans-serif;
+  font-family: "Roboto Slab", "Quicksand", sans-serif;
   opacity: 0;
   animation: fadeInPage 0.3s ease-in forwards;
 }
@@ -15,7 +23,6 @@ body {
   flex-direction: column;
   padding: 0;
   margin: 0;
-  transition: opacity 0.3s ease-in;
   height: 100vh;
 }
 
@@ -24,15 +31,16 @@ body::before {
   position: fixed;
   top: 0;
   left: 0;
-  width: 200%;
-  height: 200%;
+  width: 150%;
+  height: 150%;
   background: linear-gradient(45deg, #f88379, #dcffff, #fffff0, #191970);
   background-size: 400% 400%;
-  animation: gradientMove 15s ease infinite;
+  animation: gradientMove 25s ease infinite;
   z-index: -1;
-  filter: blur(80px);
+  filter: blur(40px);
   opacity: 0.6;
   pointer-events: none;
+  will-change: background-position;
 }
 
 h2 {
@@ -82,11 +90,12 @@ h2 {
   background-color: transparent;
   border: 2px solid #011f26;
   border-radius: 2.5rem;
-  box-shadow: #413f3f 0.2rem 0.2rem 0 0;
+  box-shadow: var(--shadow-normal);
   width: 16rem;
-  height: 1.8rem;
+  height: 2rem;
   padding: 0.5rem;
   transition: all 400ms ease-in-out;
+  will-change: opacity, transform;
 }
 
 #tabBox::before {
@@ -98,21 +107,10 @@ h2 {
   height: calc(100% - 12px);
   border-radius: 2.5rem;
   background: #f88379;
-  box-shadow: #413f3f 0.2rem 0.2rem 0 0;
-  /* background: linear-gradient(
-    145deg, 
-    #f76557 0%, 
-    #f4c6c2 100% 
-  );
-
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: 
-    inset 0 2px 3px rgba(255, 255, 255, 0.6),
-    0 4px 10px rgba(0, 0, 0, 0.15); */
-
+  box-shadow: var(--shadow-normal);
   border: 1px solid #011f26;
   transition: transform 0.3s ease-in-out;
+  will-change: transform;
 }
 
 #tabBox.tab-2-active::before {
@@ -131,23 +129,13 @@ h2 {
   position: relative;
   z-index: 1;
   transition: color 0.3s ease-in-out;
+  padding-bottom: 0.2rem;
+  padding-right: 0.7rem;
 }
 
 #tabBox:not(.tab-2-active) #itemTrackTab,
 #tabBox.tab-2-active #followPageTab {
   font-weight: 700;
-}
-
-#welcomeMessage {
-  font-family: "Quicksand";
-  font-weight: 400;
-  font-size: 2.2vh;
-}
-
-#welcomeMesDiv {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
 }
 
 .checkboxBrand {
@@ -161,7 +149,7 @@ h2 {
   padding: 0rem 1rem;
   border: 2px solid #011f26;
   border-radius: 2.5rem;
-  box-shadow: #413f3f 0.3vw 0.4vh 0 0;
+  box-shadow: var(--shadow-normal);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -170,82 +158,19 @@ h2 {
     background-color 300ms ease-in-out;
 }
 
-.checkboxLabelGender {
-  height: 8rem;
-  margin: 1rem;
-  padding: 0rem 2rem;
-  border: 2px solid #011f26;
-  border-radius: 2.5rem;
-  box-shadow: #413f3f 0.3vw 0.5vh 0 0;
-  width: 8rem;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  transition: all 130ms ease-in-out;
-}
-
-.checkboxGender:hover {
-  box-shadow: #422800 1px 1px 0 0;
-  transform: translate(2px, 2px);
-}
-
-.checkboxGender {
-  font-family: "Quicksand";
-  font-weight: 400;
-  font-size: 1.2rem;
-  height: 13vh;
-  margin: 1rem;
-  padding: 0rem 2rem;
-  border: 2px solid #011f26;
-  border-radius: 2.5rem;
-  box-shadow: #413f3f 0.3vw 0.5vh 0 0;
-  width: 15vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  transition: all 130ms ease-in-out;
-}
-
-.checkboxGenderInput {
-  display: none;
-}
-
-/* .saveButton {
-  font-family: "Quicksand";
-  font-weight: 400;
-  font-size: 1.4rem;
-  margin: 0.4rem;
-  height: 6rem;
-  width: 25rem;
-  border-radius: 3vh;
-  box-shadow: #413f3f 0.3vw 0.5vh 0 0;
-  background: #f88379;
-  transition: 200ms;
-}
-
-.saveButton:hover {
-  background: #f76557;
-} */
-
-.saveButton.clicked {
-  box-shadow: #422800 1px 1px 0 0 !important;
-  transform: translate(2px, 2px) !important;
-  transition: all 150ms ease-in-out;
-}
-
 .checkboxLabel:hover {
-  box-shadow: #422800 1px 1px 0 0;
+  box-shadow: var(--shadow-hover);
   transform: translate(2px, 2px);
 }
 
 .buttonClicked {
-  box-shadow: #422800 1px 1px 0 0 !important;
+  box-shadow: var(--shadow-hover) !important;
   transform: translate(4px, 4px) !important;
   transition: all 150ms ease-in-out;
 }
 
 .brandButtonClicked {
-  box-shadow: #422800 1px 1px 0 0 !important;
+  box-shadow: var(--shadow-hover) !important;
   transform: translate(2px, 2px) !important;
   transition: all 150ms ease-in-out;
 }
@@ -261,45 +186,104 @@ h2 {
   gap: 1rem;
 }
 
-#userEmailPrefix,
-#name {
-  text-decoration: none;
-  color: #011f26;
-  font-family: "Playwrite CU", sans-serif;
-  text-shadow: 0.3vw 0.3vh #78866b;
-  pointer-events: none;
-  font-size: 3.2vh;
+/* Menu System */
+#menuContainer {
+  position: fixed;
+  top: 2rem;
+  right: 3rem;
+  z-index: 1000;
+}
+
+#menuButton {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f88379;
+  box-shadow: var(--shadow-normal);
+  width: 7rem;
+  height: 3rem;
+  border: solid 2px black;
+  border-radius: 1rem;
+  cursor: pointer;
+  transition: all 100ms ease-in-out;
+  font-family: "Quicksand", sans-serif;
+  will-change: box-shadow, transform;
   font-weight: 600;
-  margin: 0;
-}
-
-#statusMessage {
-  display: none;
+  font-size: 1rem;
   color: #011f26;
-  font-family: "Quicksand";
-  pointer-events: none;
-  font-size: 1.2vw;
-  font-weight: 400;
-  margin-top: 6vh;
-  margin-bottom: 0;
 }
 
-.genderDiv {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  margin-top: 4vh;
+#menuButton:hover {
+  box-shadow: var(--shadow-hover);
+  transform: translate(2px, 2px);
+}
+
+#menuDropdown {
   position: absolute;
-  top: 30%;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  background-color: white;
+  border: 2px solid #011f26;
+  border-radius: 1rem;
+  box-shadow: var(--shadow-normal);
+  overflow: hidden;
+  transition: all 200ms ease-in-out;
+  transform-origin: top right;
 }
 
-#genderButtonsDiv {
+#menuDropdown.menu-hidden {
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.8) translateY(-10px);
+}
+
+#menuDropdown.menu-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1) translateY(0);
+}
+
+.menu-item {
   display: flex;
-  flex-direction: row;
-  align-items: center;
   justify-content: center;
-  margin-top: 4rem;
+  align-items: center;
+  width: 10rem;
+  height: 3rem;
+  border: none;
+  cursor: pointer;
+  transition: all 100ms ease-in-out;
+  font-family: "Quicksand", sans-serif;
+  will-change: box-shadow, transform;
+  font-weight: 600;
+  font-size: 1rem;
+  color: #011f26;
+  background-color: white;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.menu-item:last-child {
+  border-bottom: none;
+}
+
+.menu-item:hover {
+  background-color: #f0f0f0;
+}
+
+#logoutButton.menu-item {
+  background-color: #f88379;
+}
+
+#logoutButton.menu-item:hover {
+  background-color: #e67266;
+}
+
+#editCategoryButton.menu-item {
+  background-color: white;
+}
+
+#editCategoryButton.menu-item:hover {
+  background-color: #f0f0f0;
 }
 
 #brandTrackingDiv {
@@ -328,25 +312,8 @@ h2 {
   height: 20rem;
   border: 2px solid #011f26;
   border-radius: 2.5rem;
-  box-shadow: #413f3f 0.3rem 0.3rem 0 0;
+  box-shadow: var(--shadow-normal);
   margin-top: 2rem;
-}
-
-.element-transition {
-  opacity: 1;
-  transform: translateY(0);
-  transition: opacity 400ms ease-in-out, transform 400ms ease-in-out;
-}
-
-.element-hidden {
-  opacity: 0;
-  pointer-events: none; 
-  position: absolute; 
-  transform: translateY(20px);
-}
-
-.initially-hidden {
-    display: none;
 }
 
 .linkBox {
@@ -354,17 +321,19 @@ h2 {
   height: 20em;
   border: solid 2px black;
   border-radius: 3rem;
-  box-shadow: #413f3f 0.3rem 0.3rem 0 0;
+  box-shadow: var(--shadow-normal);
 }
+
 .linkInput {
-  font-family: "Quicksand";
+  font-family: "Quicksand", sans-serif;
+  will-change: box-shadow, transform;
   width: 88%;
   border: solid 2px black;
   height: 2rem;
   margin: 1rem;
   margin-right: 0.5rem;
   border-radius: 2.5rem;
-  box-shadow: #413f3f 0.2rem 0.2rem 0 0;
+  box-shadow: var(--shadow-normal);
   cursor: text;
   font-weight: 600;
   font-size: 1rem;
@@ -385,18 +354,19 @@ h2 {
 }
 
 .addButton:hover {
-  box-shadow: #422800 1px 1px 0 0;
+  box-shadow: var(--shadow-hover);
   transform: translate(2px, 2px);
 }
 
 .addButton {
-  font-family: "Quicksand";
+  font-family: "Quicksand", sans-serif;
+  will-change: box-shadow, transform;
   margin: 1rem;
   margin-left: 0;
   height: 2.5rem;
   width: 4.5rem;
   border-radius: 2rem;
-  box-shadow: #413f3f 0.2rem 0.2rem 0 0;
+  box-shadow: var(--shadow-normal);
   transition: all 150ms ease-in-out;
   font-weight: 600;
   font-size: 1rem;
@@ -434,7 +404,7 @@ h2 {
   margin-top: 0;
   background: antiquewhite;
   border: solid 2px black;
-  box-shadow: #413f3f 0.2rem 0.2rem 0 0;
+  box-shadow: var(--shadow-normal);
   cursor: pointer;
 }
 
@@ -443,14 +413,15 @@ h2 {
 }
 
 .itemImg {
-  box-shadow: #dadada 0.2rem 0.2rem 1rem 0.1rem;
+  box-shadow: var(--shadow-light);
   height: inherit;
 }
 
 .itemTitle {
   position: absolute;
   top: 28%;
-  font-family: "Quicksand";
+  font-family: "Quicksand", sans-serif;
+  will-change: box-shadow, transform;
   font-size: 1rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
@@ -461,10 +432,10 @@ h2 {
   font-family: Quicksand;
   position: absolute;
   top: 63%;
-  font-family: "Quicksand";
+  font-family: "Quicksand", sans-serif;
+  will-change: box-shadow, transform;
   font-size: 0.8rem;
   font-weight: 400;
-  /* margin-bottom: 0.5rem; */
   flex-grow: 1;
   padding-left: 0.5rem;
 }
@@ -472,7 +443,8 @@ h2 {
 .itemInfo {
   position: absolute;
   top: 42%;
-  font-family: "Quicksand";
+  font-family: "Quicksand", sans-serif;
+  will-change: box-shadow, transform;
   font-size: 0.9rem;
   font-weight: 400;
   margin: 0;
@@ -482,7 +454,8 @@ h2 {
 }
 
 .deleteItemButton {
-  font-family: "Quicksand";
+  font-family: "Quicksand", sans-serif;
+  will-change: box-shadow, transform;
   display: flex;
   position: absolute;
   width: 2.5rem;
@@ -505,18 +478,19 @@ h2 {
 }
 
 .itemButtons {
-  font-family: "Quicksand";
+  font-family: "Quicksand", sans-serif;
+  will-change: box-shadow, transform;
   width: 8rem;
   height: 2.5rem;
   border-radius: 2rem;
-  box-shadow: #413f3f 0.2rem 0.2rem 0 0;
+  box-shadow: var(--shadow-normal);
   margin-bottom: 0.8rem;
   transition: all 150ms ease-in-out;
   cursor: pointer;
 }
 
 .itemButtons:hover {
-  box-shadow: #422800 1px 1px 0 0;
+  box-shadow: var(--shadow-hover);
   transform: translate(2px, 2px);
 }
 
@@ -542,7 +516,7 @@ h2 {
   align-items: center;
   position: absolute;
   background-color: #f88379;
-  box-shadow: #413f3f 0.2rem 0.2rem 0 0;
+  box-shadow: var(--shadow-normal);
   width: 3rem;
   height: 2rem;
   border-radius: 2rem;
@@ -553,7 +527,7 @@ h2 {
 }
 
 #removeItem:hover {
-  box-shadow: #422800 1px 1px 0 0;
+  box-shadow: var(--shadow-hover);
   transform: translate(2px, 2px);
 }
 
@@ -600,7 +574,8 @@ h2 {
 }
 
 .instruction {
-  font-family: "Quicksand";
+  font-family: "Quicksand", sans-serif;
+  will-change: box-shadow, transform;
   font-weight: 400;
   font-size: 2.2vh;
   margin: 0;
@@ -646,12 +621,10 @@ h2 {
     padding: 0rem 1rem;
     border: 2px solid #011f26;
     border-radius: 2.5rem;
-    box-shadow: #413f3f 0.3rem 0.3rem 0 0;
+    box-shadow: var(--shadow-normal);
     display: flex;
     justify-content: center;
     align-items: center;
     transition: all 130ms ease-in-out;
   }
 }
-
-

@@ -22,7 +22,16 @@ async function handleSubmission() {
     }
     try {
       const response = await fetchWithCsrf("/api/save", 'POST', { email: value });
+      console.log("Save response status:", response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Save error response:", errorText);
+        throw new Error(`Server hatası (${response.status}): ${errorText}`);
+      }
+      
       const result = await response.json();
+      console.log("Save result:", result);
 
       if (result.success) {
         currentEmail = value;
@@ -54,7 +63,7 @@ async function handleSubmission() {
           showMessage("Kullanıcı sayfanıza yönlendiriliyorsunuz...");
         }, 2000);
         setTimeout(() => {
-          window.location.href = "/user.html";
+          window.location.href = "/category";
         }, 4000);
       } else {
         showMessage(result.error || "Doğrulama başarısız.");
@@ -77,9 +86,33 @@ window.addEventListener("DOMContentLoaded", async () => {
       signInButton.textContent = "Oturum aktif. Giriş yapılıyor...";
       signInButton.disabled = true;
       signInButton.style.cursor = "wait";
-      setTimeout(() => {
-        window.location.href = "/user.html";
-      }, 2000);
+      // Check if user has gender selected
+      try {
+        const userInfoRes = await fetch("/api/user-info", {
+          credentials: "include",
+        });
+        const userInfo = await userInfoRes.json();
+        
+        if (userInfo.success && userInfo.gender) {
+          // User has gender, go to dashboard
+          signInButton.textContent = "Kullanıcı sayfanıza yönlendiriliyorsunuz...";
+          setTimeout(() => {
+            window.location.href = "/dashboard";
+          }, 2000);
+        } else {
+          // No gender, go to category selection
+          signInButton.textContent = "Kategori seçimine yönlendiriliyor...";
+          setTimeout(() => {
+            window.location.href = "/category";
+          }, 1000);
+        }
+      } catch (err) {
+        console.error("User info kontrol hatası:", err);
+        // Fallback to category
+        setTimeout(() => {
+          window.location.href = "/category";
+        }, 2000);
+      }
     }
   } catch (err) {
     console.error("Oturum kontrol hatası:", err);

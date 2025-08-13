@@ -1,12 +1,17 @@
 const sqlite3 = require('sqlite3').verbose();
 
-const db = new sqlite3.Database('./kunto.db', (err) => {
+const db = new sqlite3.Database('./kunto.db', sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
     if (err) {
         console.error("SQLite veritabanına bağlanırken hata oluştu:", err.message);
     } else {
         console.log('SQLite veritabanına başarıyla bağlanıldı.');
     }
 });
+
+// Database ayarları - lock timeout ve busy handler
+db.configure("busyTimeout", 30000); // 30 saniye timeout
+db.run("PRAGMA journal_mode = WAL;"); // Write-Ahead Logging aktifleştir
+db.run("PRAGMA synchronous = NORMAL;"); // Sync modunu normal yap
 
 
 db.serialize(() => {
