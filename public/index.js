@@ -1,5 +1,20 @@
 import { fetchWithCsrf } from './apis.js';
+import { 
+  DELAYS, 
+  ERROR_MESSAGES, 
+  SUCCESS_MESSAGES, 
+  ROUTES,
+  API_ENDPOINTS,
+  UI_STATES
+} from './constants.js';
+import { 
+  DOMUtils, 
+  ErrorHandler, 
+  ValidationUtils, 
+  StorageUtils 
+} from './utils.js';
 
+// DOM Elements
 const signInButton = document.getElementById("signInButton");
 const emailInput = document.getElementById("emailInput");
 const sendItButton = document.getElementById("sendIt");
@@ -11,17 +26,17 @@ async function handleSubmission() {
   const value = emailInput.value.trim();
 
   if (mode === "email") {
-    const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!value) {
-      showMessage("E-posta adresi boş olamaz!");
+    if (ValidationUtils.isEmpty(value)) {
+      showMessage(ERROR_MESSAGES.EMAIL_EMPTY);
       return;
     }
-    if (!pattern.test(value)) {
-      showMessage("Geçerli bir e-posta adresi giriniz!");
+    if (!ValidationUtils.isValidEmail(value)) {
+      showMessage(ERROR_MESSAGES.EMAIL_INVALID);
       return;
     }
+    
     try {
-      const response = await fetchWithCsrf("/api/save", 'POST', { email: value });
+      const response = await fetchWithCsrf(API_ENDPOINTS.SAVE, 'POST', { email: value });
       console.log("Save response status:", response.status);
       
       if (!response.ok) {
@@ -35,83 +50,88 @@ async function handleSubmission() {
 
       if (result.success) {
         currentEmail = value;
-        localStorage.setItem("userEmail", currentEmail);
+        StorageUtils.set("userEmail", currentEmail);
         showMessage(result.message);
-        emailInput.value = "";
-        emailInput.placeholder = "6 haneli kodu girin";
+        DOMUtils.setValue("emailInput", "");
+        DOMUtils.setPlaceholder("emailInput", "6 haneli kodu girin");
         mode = "code";
       } else {
         showMessage("Sunucu hatası: " + (result.error || "Bilinmeyen hata"));
       }
     } catch (err) {
-      showErrMessage("Bağlantı hatası!");
+      ErrorHandler.handle(err, 'emailSubmission');
+      showErrMessage(ErrorHandler.categorizeError(err) === 'NETWORK_ERROR' 
+        ? ERROR_MESSAGES.NETWORK_ERROR 
+        : ERROR_MESSAGES.SERVER_ERROR);
     }
   } else if (mode === "code") {
     const code = value;
-    if (!/^\d{6}$/.test(code)) {
-      showMessage("6 haneli kodu doğru girin!");
+    if (!ValidationUtils.isValidCode(code)) {
+      showMessage(ERROR_MESSAGES.CODE_INVALID);
       return;
     }
+    
     try {
-      const response = await fetchWithCsrf("/api/verify-code", 'POST', { email: currentEmail, code });
+      const response = await fetchWithCsrf(API_ENDPOINTS.VERIFY_CODE, 'POST', { email: currentEmail, code });
       const result = await response.json();
 
       if (result.success) {
-        showMessage("Başarıyla giriş yapıldı!");
-        sendItButton.disabled = true;
+        showMessage(SUCCESS_MESSAGES.LOGIN_SUCCESS);
+        DOMUtils.setDisabled("sendIt", true);
         setTimeout(() => {
-          showMessage("Kullanıcı sayfanıza yönlendiriliyorsunuz...");
-        }, 2000);
+          showMessage(SUCCESS_MESSAGES.REDIRECTING);
+        }, DELAYS.REDIRECT_LONG);
         setTimeout(() => {
-          window.location.href = "/category";
-        }, 4000);
+          window.location.href = ROUTES.CATEGORY;
+        }, DELAYS.REDIRECT_LONG * 2);
       } else {
-        showMessage(result.error || "Doğrulama başarısız.");
+        showMessage(result.error || ERROR_MESSAGES.VERIFICATION_FAILED);
       }
     } catch (err) {
-      showMessage("Kod kontrolünde hata!");
+      ErrorHandler.handle(err, 'codeVerification');
+      showMessage(ERROR_MESSAGES.CODE_CHECK_ERROR);
     }
-    emailInput.value = "";
+    DOMUtils.setValue("emailInput", "");
   }
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
   try {
-    const res = await fetch("/api/check-session", {
+    const res = await fetch(API_ENDPOINTS.CHECK_SESSION, {
       credentials: "include",
     });
     const data = await res.json();
     if (data.loggedIn) {
-      const signInButton = document.getElementById("signInButton");
-      signInButton.textContent = "Oturum aktif. Giriş yapılıyor...";
-      signInButton.disabled = true;
-      signInButton.style.cursor = "wait";
+      DOMUtils.setText("signInButton", SUCCESS_MESSAGES.SESSION_ACTIVE);
+      DOMUtils.setDisabled("signInButton", true);
+      DOMUtils.getElement("signInButton").style.cursor = "wait";
+      
       // Check if user has gender selected
       try {
-        const userInfoRes = await fetch("/api/user-info", {
+        const userInfoRes = await fetch(API_ENDPOINTS.USER_INFO, {
           credentials: "include",
         });
         const userInfo = await userInfoRes.json();
         
         if (userInfo.success && userInfo.gender) {
           // User has gender, go to dashboard
-          signInButton.textContent = "Kullanıcı sayfanıza yönlendiriliyorsunuz...";
+          DOMUtils.setText("signInButton", SUCCESS_MESSAGES.REDIRECTING);
           setTimeout(() => {
-            window.location.href = "/dashboard";
-          }, 2000);
+            window.location.href = ROUTES.DASHBOARD;
+          }, DELAYS.REDIRECT_LONG);
         } else {
           // No gender, go to category selection
-          signInButton.textContent = "Kategori seçimine yönlendiriliyor...";
+          DOMUtils.setText("signInButton", SUCCESS_MESSAGES.CATEGORY_REDIRECT);
           setTimeout(() => {
-            window.location.href = "/category";
-          }, 1000);
+            window.location.href = ROUTES.CATEGORY;
+          }, DELAYS.REDIRECT_SHORT);
         }
       } catch (err) {
         console.error("User info kontrol hatası:", err);
         // Fallback to category
         setTimeout(() => {
-          window.location.href = "/category";
-        }, 2000);
+          window.location.href = ROUTES.CATEGORY;
+        }, DELAYS.REDIRECT_LONG);
       }
     }
   } catch (err) {
@@ -121,20 +141,20 @@ window.addEventListener("DOMContentLoaded", async () => {
 
 signInButton.addEventListener("click", (event) => {
   event.preventDefault();
-  signInButton.classList.add("buttonClicked");
-  setTimeout(() => signInButton.classList.remove("buttonClicked"), 150);
+  DOMUtils.addClass("signInButton", UI_STATES.BUTTON_CLICKED);
+  setTimeout(() => DOMUtils.removeClass("signInButton", UI_STATES.BUTTON_CLICKED), DELAYS.BUTTON_ANIMATION);
   setTimeout(() => {
-    signInButton.style.display = "none";
-    emailInput.style.display = "inline-block";
-    sendItButton.classList.add("visible");
+    DOMUtils.hideElement("signInButton");
+    DOMUtils.showElement("emailInput");
+    DOMUtils.addClass("sendIt", UI_STATES.VISIBLE);
     emailInput.focus();
-  }, 350);
+  }, DELAYS.UI_TRANSITION);
 });
 
 sendItButton.addEventListener("click", (event) => {
   event.preventDefault();
-  sendItButton.classList.add("buttonClicked");
-  setTimeout(() => sendItButton.classList.remove("buttonClicked"), 150);
+  DOMUtils.addClass("sendIt", UI_STATES.BUTTON_CLICKED);
+  setTimeout(() => DOMUtils.removeClass("sendIt", UI_STATES.BUTTON_CLICKED), DELAYS.BUTTON_ANIMATION);
   handleSubmission();
 });
 
@@ -146,14 +166,14 @@ emailInput.addEventListener("keydown", (event) => {
 });
 
 function showMessage(msg) {
-  emailInput.value = "";
-  emailInput.placeholder = msg;
-  emailInput.disabled = false;
+  DOMUtils.setValue("emailInput", "");
+  DOMUtils.setPlaceholder("emailInput", msg);
+  DOMUtils.setDisabled("emailInput", false);
   emailInput.blur();
 }
 
 function showErrMessage(msg) {
-  emailInput.value = "";
-  emailInput.placeholder = msg;
-  emailInput.disabled = true;
+  DOMUtils.setValue("emailInput", "");
+  DOMUtils.setPlaceholder("emailInput", msg);
+  DOMUtils.setDisabled("emailInput", true);
 }

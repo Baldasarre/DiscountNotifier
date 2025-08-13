@@ -1,15 +1,25 @@
 import { fetchWithCsrf } from './apis.js';
+import { 
+  DELAYS, 
+  ROUTES, 
+  API_ENDPOINTS
+} from './constants.js';
+import { 
+  DOMUtils, 
+  ErrorHandler, 
+  StorageUtils 
+} from './utils.js';
 
 // DOM Elements
 const genderButtons = document.querySelectorAll(".checkboxGender");
-const email = localStorage.getItem("userEmail");
+const email = StorageUtils.get("userEmail");
 
 // Check if user should be on this page
 async function checkUserStatus() {
   try {
     if (!email || email === 'null' || email === 'undefined') {
       console.log("Email bulunamadı, index'e yönlendiriliyor...");
-      window.location.replace("/");
+      window.location.replace(ROUTES.INDEX);
       return;
     }
 
@@ -17,13 +27,13 @@ async function checkUserStatus() {
     const urlParams = new URLSearchParams(window.location.search);
     const isEditing = urlParams.get('edit') === 'true';
 
-    const res = await fetch(`/api/user-info`);
+    const res = await fetch(API_ENDPOINTS.USER_INFO);
     const data = await res.json();
     
     if (data.success && data.gender && !isEditing) {
       // User already has gender selected and not editing, redirect to dashboard
       console.log("Gender zaten seçilmiş, dashboard'a yönlendiriliyor...");
-      window.location.replace("/dashboard");
+      window.location.replace(ROUTES.DASHBOARD);
       return;
     }
     
@@ -41,13 +51,11 @@ async function checkUserStatus() {
     
     if (!data.success) {
       console.error("Kullanıcı bilgileri alınamadı:", data.error);
-      localStorage.clear();
-      window.location.replace('/');
+      StorageUtils.clear();
+      window.location.replace(ROUTES.INDEX);
     }
   } catch (err) {
-    console.error("Sayfa başlatılırken hata oluştu:", err);
-    localStorage.clear();
-    window.location.replace('/');
+    ErrorHandler.handle(err, 'checkUserStatus');
   }
 }
 
@@ -56,7 +64,7 @@ async function selectGender(selectedValue) {
   try {
     console.log("Gender seçiliyor:", selectedValue);
     
-    const response = await fetchWithCsrf("/api/update-user", 'POST', { 
+    const response = await fetchWithCsrf(API_ENDPOINTS.UPDATE_USER, 'POST', { 
       gender: selectedValue, 
       brands: [] 
     });
@@ -73,13 +81,13 @@ async function selectGender(selectedValue) {
     // Add exit animation
     document.body.classList.add('page-transition-exit-active');
     
-    // Redirect to dashboard after animation
+    // Redirect to dashboard after a short delay
     setTimeout(() => {
-      window.location.href = "/dashboard";
-    }, 300);
+      window.location.replace(ROUTES.DASHBOARD);
+    }, DELAYS.GENDER_SELECTION);
     
   } catch (err) {
-    console.error("Gender seçimi sırasında hata:", err);
+    ErrorHandler.handle(err, 'selectGender');
     alert("Bir hata oluştu. Lütfen tekrar deneyin.");
   }
 }

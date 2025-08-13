@@ -1,5 +1,17 @@
 import { renderBrandButtons, renderProductCards, userTrackedProducts } from './ui-components.js';
 import { fetchWithCsrf } from './apis.js';
+import { 
+  DELAYS, 
+  COLORS, 
+  ROUTES, 
+  API_ENDPOINTS,
+  UI_STATES
+} from './constants.js';
+import { 
+  DOMUtils, 
+  ErrorHandler, 
+  StorageUtils 
+} from './utils.js';
 
 // --- DOM Element References ---
 const form = document.getElementById("form");
@@ -16,7 +28,10 @@ const editCategoryButton = document.getElementById("editCategoryButton");
 const menuButton = document.getElementById("menuButton");
 const menuDropdown = document.getElementById("menuDropdown");
 
-const email = localStorage.getItem("userEmail");
+// Cache brand checkboxes for better performance
+let brandCheckboxes = null;
+
+const email = StorageUtils.get("userEmail");
 let selectedGender = null;
 
 function debounce(func, delay) {
@@ -27,18 +42,22 @@ function debounce(func, delay) {
   };
 }
 
-const debouncedBrandSave = debounce(() => savePreferences(false), 3000);
+const debouncedBrandSave = debounce(() => savePreferences(false), DELAYS.BRAND_SAVE);
 
 function addBrandCheckboxListeners() {
-    const brandCheckboxes = document.querySelectorAll(".checkboxBrand");
-    brandCheckboxes.forEach((checkbox) => {
-        checkbox.addEventListener("change", () => {
-            const label = checkbox.closest(".checkboxLabel");
-            label.style.backgroundColor = checkbox.checked ? "#f88379" : "transparent";
-    
-            debouncedBrandSave();
-        });
+  // Cache brand checkboxes once
+  if (!brandCheckboxes) {
+    brandCheckboxes = document.querySelectorAll(".checkboxBrand");
+  }
+  
+  brandCheckboxes.forEach((checkbox) => {
+    checkbox.addEventListener("change", () => {
+      const label = checkbox.closest(".checkboxLabel");
+      label.style.backgroundColor = checkbox.checked ? COLORS.BRAND_SELECTED : COLORS.BRAND_DEFAULT;
+      
+      debouncedBrandSave();
     });
+  });
 }
 
 async function savePreferences(isGenderSelection = false) {
@@ -54,7 +73,7 @@ async function savePreferences(isGenderSelection = false) {
 
   try {
     console.log("Tercihler kaydediliyor:", payload);
-    const response = await fetchWithCsrf("/api/update-user", 'POST', payload);
+    const response = await fetchWithCsrf(API_ENDPOINTS.UPDATE_USER, 'POST', payload);
     console.log("Update-user response status:", response.status);
     
     if (!response.ok) {
@@ -66,8 +85,7 @@ async function savePreferences(isGenderSelection = false) {
     const result = await response.json();
     console.log("Update-user success:", result);
   } catch (err) {
-    console.error("Tercihler kaydedilirken hata:", err);
-    console.error("Error details:", err.message, err.stack);
+    ErrorHandler.handle(err, 'savePreferences');
   }
 }
 
@@ -81,13 +99,13 @@ async function initializePage() {
   try {
     if (!email || email === 'null' || email === 'undefined') {
       console.log("Email bulunamadı, index'e yönlendiriliyor...");
-      window.location.replace("/");
+      window.location.replace(ROUTES.INDEX);
       return;
     }
     
     console.log("Email mevcut:", email);
     console.log("User-info API çağrısı yapılıyor...");
-    const res = await fetch(`/api/user-info`);
+    const res = await fetch(API_ENDPOINTS.USER_INFO);
     console.log("API Response status:", res.status);
     
     if (!res.ok) {
@@ -104,7 +122,7 @@ async function initializePage() {
       // If no gender selected, redirect to gender selection
       if (!selectedGender) {
         console.log("Gender seçilmemiş, gender-selection sayfasına yönlendiriliyor...");
-        window.location.replace("/category");
+        window.location.replace(ROUTES.CATEGORY);
         return;
       }
       
@@ -116,33 +134,31 @@ async function initializePage() {
       brandCheckboxes.forEach((cb) => {
         if (data.brands.includes(cb.value)) {
           cb.checked = true;
-          cb.closest(".checkboxLabel").style.backgroundColor = "#f88379";
+          cb.closest(".checkboxLabel").style.backgroundColor = COLORS.BRAND_SELECTED;
         }
       });
 
     } else {
       console.error("Kullanıcı bilgileri alınamadı:", data.error);
-      localStorage.clear();
-      window.location.replace('/');
+      StorageUtils.clear();
+      window.location.replace(ROUTES.INDEX);
     }
   } catch (err) {
-    console.error("Sayfa başlatılırken hata oluştu:", err);
-    localStorage.clear();
-    window.location.replace('/');
+    ErrorHandler.handle(err, 'initializePage');
   }
 }
 
 // Tab switching functionality
 itemTrackTab.addEventListener("click", () => {
-  tabBox.classList.remove("tab-2-active");
-  itemTrackSection.style.display = "flex";
-  brandTrackingDiv.style.display = "none";
+  DOMUtils.removeClass("tabBox", UI_STATES.TAB_ACTIVE);
+  DOMUtils.showElement("linkBoxParrent");
+  DOMUtils.hideElement("brandTrackingDiv");
 });
 
 followPageTab.addEventListener("click", () => {
-  tabBox.classList.add("tab-2-active");
-  itemTrackSection.style.display = "none";
-  brandTrackingDiv.style.display = "flex";
+  DOMUtils.addClass("tabBox", UI_STATES.TAB_ACTIVE);
+  DOMUtils.hideElement("linkBoxParrent");
+  DOMUtils.showElement("brandTrackingDiv");
 });
 
 // Logout functionality
@@ -150,7 +166,7 @@ async function logout() {
   console.log("Logout başlatılıyor...");
   
   try {
-    const response = await fetch('/api/logout', {
+    const response = await fetch(API_ENDPOINTS.LOGOUT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -165,7 +181,7 @@ async function logout() {
   }
   
   // Client-side cleanup
-  localStorage.clear();
+  StorageUtils.clear();
   sessionStorage.clear();
   
   // Clear cookies
@@ -174,7 +190,7 @@ async function logout() {
   });
   
   // Redirect
-  window.location.replace("/");
+  window.location.replace(ROUTES.INDEX);
 }
 
 // Menu System
@@ -182,22 +198,22 @@ menuButton.addEventListener("click", function(e) {
   e.preventDefault();
   e.stopPropagation();
   
-  const isHidden = menuDropdown.classList.contains('menu-hidden');
+  const isHidden = menuDropdown.classList.contains(UI_STATES.MENU_HIDDEN);
   
   if (isHidden) {
-    menuDropdown.classList.remove('menu-hidden');
-    menuDropdown.classList.add('menu-visible');
+    DOMUtils.removeClass("menuDropdown", UI_STATES.MENU_HIDDEN);
+    DOMUtils.addClass("menuDropdown", UI_STATES.MENU_VISIBLE);
   } else {
-    menuDropdown.classList.remove('menu-visible');
-    menuDropdown.classList.add('menu-hidden');
+    DOMUtils.removeClass("menuDropdown", UI_STATES.MENU_VISIBLE);
+    DOMUtils.addClass("menuDropdown", UI_STATES.MENU_HIDDEN);
   }
 });
 
 // Close menu when clicking outside
 document.addEventListener("click", function(e) {
   if (!menuButton.contains(e.target) && !menuDropdown.contains(e.target)) {
-    menuDropdown.classList.remove('menu-visible');
-    menuDropdown.classList.add('menu-hidden');
+    DOMUtils.removeClass("menuDropdown", UI_STATES.MENU_VISIBLE);
+    DOMUtils.addClass("menuDropdown", UI_STATES.MENU_HIDDEN);
   }
 });
 
@@ -207,31 +223,31 @@ editCategoryButton.addEventListener("click", function(e) {
   
   // Prevent multiple clicks
   if (editCategoryButton.disabled) return;
-  editCategoryButton.disabled = true;
-  editCategoryButton.style.opacity = "0.6";
-  editCategoryButton.textContent = "Yönlendiriliyor...";
+  DOMUtils.setDisabled("editCategoryButton", true);
+  DOMUtils.setOpacity("editCategoryButton", COLORS.BUTTON_DISABLED);
+  DOMUtils.setText("editCategoryButton", "Yönlendiriliyor...");
   
   // Close menu
-  menuDropdown.classList.remove('menu-visible');
-  menuDropdown.classList.add('menu-hidden');
+  DOMUtils.removeClass("menuDropdown", UI_STATES.MENU_VISIBLE);
+  DOMUtils.addClass("menuDropdown", UI_STATES.MENU_HIDDEN);
   
   // Redirect to category page with edit parameter
   setTimeout(() => {
-    window.location.href = "/category?edit=true";
-  }, 500);
+    window.location.href = `${ROUTES.CATEGORY}?edit=true`;
+  }, DELAYS.MENU_REDIRECT);
 });
 
 logoutButton.addEventListener("click", function(e) {
   e.preventDefault();
   e.stopPropagation();
   
-  logoutButton.disabled = true;
-  logoutButton.style.opacity = "0.5";
-  logoutButton.textContent = "Çıkış yapılıyor...";
+  DOMUtils.setDisabled("logoutButton", true);
+  DOMUtils.setOpacity("logoutButton", COLORS.BUTTON_LOADING);
+  DOMUtils.setText("logoutButton", "Çıkış yapılıyor...");
   
   // Close menu
-  menuDropdown.classList.remove('menu-visible');
-  menuDropdown.classList.add('menu-hidden');
+  DOMUtils.removeClass("menuDropdown", UI_STATES.MENU_VISIBLE);
+  DOMUtils.addClass("menuDropdown", UI_STATES.MENU_HIDDEN);
   
   logout();
 });

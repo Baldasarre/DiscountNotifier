@@ -46,7 +46,9 @@ const apiLimiter = rateLimit({
 
 // Logout endpoint - CSRF koruması olmadan
 app.post('/api/logout', (req, res) => {
-  console.log("Logout endpoint called (no CSRF)");
+  if (process.env.NODE_ENV === 'development') {
+    console.log("Logout endpoint called (no CSRF)");
+  }
   
   // Clear server-side session cookie
   res.clearCookie("sessionId", {
@@ -60,7 +62,9 @@ app.post('/api/logout', (req, res) => {
   res.clearCookie("connect.sid");
   res.clearCookie("_csrf");
   
-  console.log("Server-side cookies cleared");
+  if (process.env.NODE_ENV === 'development') {
+    console.log("Server-side cookies cleared");
+  }
   res.json({ success: true, message: "Logout successful" });
 });
 

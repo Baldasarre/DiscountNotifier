@@ -41,17 +41,21 @@ router.post("/save", (req, res) => {
       db.serialize(() => {
         db.run(updateSql, [code, now, email], function(err) {
           if (err) {
-            console.error("Database update error:", err.message);
+            console.log("Database update error:", err.message);
             return res.status(500).json({ error: `Kullanıcı güncellenemedi: ${err.message}` });
           }
           
           if (this.changes === 0) {
-            console.error("No rows updated - user might not exist");
+            if (process.env.NODE_ENV === 'development') {
+              console.error("No rows updated - user might not exist");
+            }
             return res.status(404).json({ error: "Kullanıcı bulunamadı" });
           }
           
           message = user.verified ? "Giriş için kod gönderildi." : "Doğrulama için kod gönderildi.";
-          console.log("Sending email to:", email, "Code:", code);
+          if (process.env.NODE_ENV === 'development') {
+            console.log("Sending email to:", email, "Code:", code);
+          }
           sendEmail(email, code, user.verified ? "login" : "verify");
           res.json({ success: true, message });
         });
