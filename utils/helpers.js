@@ -44,7 +44,18 @@ function generateCode() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+function setSessionCookie(res, userId) {
+  res.cookie("sessionId", userId, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 1000 * 60 * 60 * 24 * 7, // 1 hafta
+    sameSite: "Lax",
+    path: "/"
+  });
+}
+
 module.exports = {
     sendEmail,
-    generateCode
+    generateCode,
+    setSessionCookie
 };

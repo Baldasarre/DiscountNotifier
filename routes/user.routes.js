@@ -2,7 +2,7 @@ const express = require('express');
 const { v4: uuidv4 } = require("uuid");
 const db = require('../config/database');
 const authenticate = require('../middleware/authenticate');
-const { sendEmail, generateCode } = require('../utils/helpers'); // Yardımcı fonksiyonları taşıyacağız
+const { sendEmail, generateCode, setSessionCookie } = require('../utils/helpers'); // Yardımcı fonksiyonları taşıyacağız
 const router = express.Router();
 
 
@@ -90,12 +90,7 @@ router.post("/verify-code", (req, res) => {
     db.run(updateSql, [new Date().toISOString(), email], function(err) {
       if (err) return res.status(500).json({ error: "Doğrulama sırasında hata." });
       
-      res.cookie("sessionId", user.id, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 1000 * 60 * 60 * 24 * 14,
-        sameSite: "Lax",
-      });
+      setSessionCookie(res, user.id);
       res.json({ success: true, message: "Kod doğru. Giriş başarılı." });
     });
   });
@@ -131,14 +126,15 @@ router.get("/check-session", (req, res) => {
       res.clearCookie("sessionId");
       return res.json({ loggedIn: false });
     }
+    
+    // Oturum aktifse cookie'yi yenile (1 hafta süre ile)
+    setSessionCookie(res, user.id);
+    
     return res.json({ loggedIn: true, email: user.email });
   });
 });
 
 
-// CSRF token endpoint'i de artık burada
-router.get("/csrf-token", (req, res) => {
-  res.json({ csrfToken: req.csrfToken() });
-});
+// CSRF token endpoint server.js'e taşındı
 
 module.exports = router;

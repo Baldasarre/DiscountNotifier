@@ -2,6 +2,7 @@
 kunto.db
 kunto.db-journal
 kunto.db-wal
+kunto.db-shm
 node_modules/
 .vscode/
 *.log
@@ -13,3 +14,5 @@ public/4.jpg
 public/5.jpg
 public/6.jpg
 public/7.jpg
+test-results.md
+DEVELOPMENT.md

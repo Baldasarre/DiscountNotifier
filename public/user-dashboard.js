@@ -1,5 +1,5 @@
-import { renderBrandButtons, renderProductCards, userTrackedProducts } from './ui-components.js';
-import { fetchWithCsrf } from './apis.js';
+import { renderBrandButtons, renderProductCards, userTrackedProducts, createProductCardHTML } from './ui-components.js';
+import { fetchWithCsrf, fetchTrackedProducts, trackProduct, untrackProduct } from './apis.js';
 import { 
   DELAYS, 
   COLORS, 
@@ -22,7 +22,7 @@ const followPageTab = document.getElementById("followPageTab");
 const itemTrackSection = document.getElementById("linkBoxParrent");
 const brandTrackingDiv = document.getElementById("brandTrackingDiv");
 const brandButtonsContainer = document.getElementById("brandButtons");
-const addedItemsContainer = document.querySelector(".addedItemBoxes");
+let addedItemsContainer = null;
 const logoutButton = document.getElementById("logoutButton");
 const editCategoryButton = document.getElementById("editCategoryButton");
 const menuButton = document.getElementById("menuButton");
@@ -43,6 +43,115 @@ function debounce(func, delay) {
 }
 
 const debouncedBrandSave = debounce(() => savePreferences(false), DELAYS.BRAND_SAVE);
+
+// Ürün ekleme ve yönetimi için gerekli değişkenler
+let currentProducts = [];
+let isLoadingProducts = false;
+
+/**
+ * Link box yükseklik animasyonu
+ */
+function animateLinkBoxHeight() {
+  const linkBox = document.querySelector('.linkBox');
+  const hasProducts = addedItemsContainer.children.length > 0 && 
+                     !addedItemsContainer.querySelector('p[style*="text-align: center"]');
+  
+  if (hasProducts) {
+    // Ürün varsa daha yüksek yap
+    linkBox.style.minHeight = '20em';
+  } else {
+    // Ürün yoksa normal yükseklik
+    linkBox.style.minHeight = '20em';
+  }
+}
+
+/**
+ * Smooth ürün ekleme animasyonu
+ */
+function addProductWithAnimation(container, newProduct) {
+  // Eğer "henüz ürün yok" mesajı varsa kaldır
+  const emptyMessage = container.querySelector('p');
+  if (emptyMessage && emptyMessage.textContent.includes('Henüz takip ettiğiniz ürün yok')) {
+    emptyMessage.remove();
+  }
+  
+  // Link box height animasyonu
+  animateLinkBoxHeight();
+  
+  // Yeni ürün kartını oluştur
+  const newCardHTML = createProductCardHTML(newProduct);
+  
+  // Geçici div oluştur
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = newCardHTML;
+  const newCard = tempDiv.firstElementChild;
+  
+  // Başlangıç animasyon stilleri - sadece opacity
+  Object.assign(newCard.style, {
+    opacity: '0',
+    transition: 'opacity 0.6s ease-out',
+    willChange: 'opacity'
+  });
+  
+  // Container'ın sonuna ekle
+  container.appendChild(newCard);
+  
+  // Animasyonu tetikle - requestAnimationFrame ile smooth
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      newCard.style.opacity = '1';
+      
+      // Animasyon tamamlandıktan sonra will-change'i kaldır
+      setTimeout(() => {
+        newCard.style.willChange = 'auto';
+      }, 600);
+    }, 100);
+  });
+}
+
+/**
+ * Toast notification sistemi
+ */
+function showToast(message, type = 'success') {
+  // Mevcut toast'ları temizle
+  const existingToasts = document.querySelectorAll('.toast');
+  existingToasts.forEach(toast => toast.remove());
+  
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  
+  // Toast stilleri
+  toast.style.cssText = `
+    position: fixed;
+    top: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: ${type === 'success' ? '#4CAF50' : '#f44336'};
+    color: white;
+    padding: 12px 24px;
+    border-radius: 25px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 10000;
+    font-size: 14px;
+    font-weight: 500;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+  `;
+  
+  document.body.appendChild(toast);
+  
+  // Fade in
+  setTimeout(() => {
+    toast.style.opacity = '1';
+  }, 100);
+  
+  // Otomatik kapat
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
 
 function addBrandCheckboxListeners() {
   // Cache brand checkboxes once
@@ -92,9 +201,56 @@ async function savePreferences(isGenderSelection = false) {
 async function initializePage() {
   console.log("Dashboard InitializePage başlatıldı");
   
+  // DOM elementlerini initialize et
+  addedItemsContainer = document.querySelector(".addedItemBoxes");
+  if (!addedItemsContainer) {
+    console.error("❌ addedItemsContainer bulunamadı!");
+    return;
+  }
+  console.log("✅ addedItemsContainer bulundu:", addedItemsContainer);
+  
+  // Event listener'ları ekle
+  addedItemsContainer.addEventListener('click', (e) => {
+    if (e.target.id === 'removeItem' || e.target.id === 'removeItemImg') {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const productCard = e.target.closest('.addedItemBox');
+      if (productCard) {
+        const productId = productCard.getAttribute('data-id');
+        const productTitle = productCard.querySelector('.itemTitle')?.textContent || 'Bu ürün';
+        if (productId) {
+          showRemoveConfirmation(productId, productTitle);
+        }
+      }
+    }
+  });
+  
+  // Add button ve link input event listener'ları
+  const addButton = document.querySelector('.addButton');
+  const linkInput = document.querySelector('.linkInput');
+  
+  if (addButton) {
+    addButton.addEventListener('click', handleAddProduct);
+    console.log("✅ Add button event listener eklendi");
+  } else {
+    console.error("❌ Add button bulunamadı!");
+  }
+  
+  if (linkInput) {
+    linkInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleAddProduct();
+      }
+    });
+    console.log("✅ Link input event listener eklendi");
+  } else {
+    console.error("❌ Link input bulunamadı!");
+  }
+  
   renderBrandButtons(brandButtonsContainer);
   addBrandCheckboxListeners();
-  renderProductCards(addedItemsContainer, userTrackedProducts);
 
   try {
     if (!email || email === 'null' || email === 'undefined') {
@@ -126,17 +282,20 @@ async function initializePage() {
         return;
       }
       
-      // Show dashboard content
-      console.log("Dashboard içeriği gösteriliyor...");
-      
-      // Load user's brand preferences
-      const brandCheckboxes = document.querySelectorAll(".checkboxBrand");
-      brandCheckboxes.forEach((cb) => {
-        if (data.brands.includes(cb.value)) {
-          cb.checked = true;
-          cb.closest(".checkboxLabel").style.backgroundColor = COLORS.BRAND_SELECTED;
-        }
-      });
+          // Show dashboard content
+    console.log("Dashboard içeriği gösteriliyor...");
+    
+    // Load user's brand preferences
+    const brandCheckboxes = document.querySelectorAll(".checkboxBrand");
+    brandCheckboxes.forEach((cb) => {
+      if (data.brands.includes(cb.value)) {
+        cb.checked = true;
+        cb.closest(".checkboxLabel").style.backgroundColor = COLORS.BRAND_SELECTED;
+      }
+    });
+    
+    // Kullanıcının takip ettiği ürünleri yükle
+    await loadUserTrackedProducts();
 
     } else {
       console.error("Kullanıcı bilgileri alınamadı:", data.error);
@@ -145,6 +304,251 @@ async function initializePage() {
     }
   } catch (err) {
     ErrorHandler.handle(err, 'initializePage');
+  }
+}
+
+/**
+ * Kullanıcının takip ettiği ürünleri yükle
+ */
+async function loadUserTrackedProducts() {
+  if (isLoadingProducts) return;
+  
+  if (!addedItemsContainer) {
+    console.error("❌ addedItemsContainer henüz initialize edilmemiş!");
+    return;
+  }
+  
+  isLoadingProducts = true;
+  
+  try {
+    console.log("🔄 Takip edilen ürünler yükleniyor...");
+    console.log("📦 Container:", addedItemsContainer);
+    
+    // Loading state göster
+    addedItemsContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">Takip edilen ürünler yükleniyor...</div>';
+    
+    // Gerçek takip edilen ürünleri getir
+    console.log("🔄 fetchTrackedProducts çağrılıyor...");
+    const response = await fetchTrackedProducts();
+    console.log("📡 API Response:", response);
+    
+    if (response.success && response.products && response.products.length > 0) {
+      currentProducts = response.products;
+      console.log("✅ Takip edilen ürünler yüklendi:", currentProducts.length, "ürün");
+      console.log("📦 Ürün detayları:", currentProducts);
+      renderProductCards(addedItemsContainer, currentProducts);
+    } else {
+      console.log("📝 Henüz takip edilen ürün bulunmuyor");
+      console.log("🔍 Response detayları:", response);
+      addedItemsContainer.innerHTML = `
+        <div style="text-align: center; padding: 40px; color: #666;">
+          <h3>Henüz takip ettiğin ürün yok</h3>
+          <p>Yukarıdaki alana bir Zara ürün linkini yapıştırarak takip etmeye başlayabilirsin.</p>
+        </div>
+      `;
+      currentProducts = [];
+    }
+    
+    // Link box height animasyonu
+    animateLinkBoxHeight();
+    
+  } catch (error) {
+    console.error("❌ Takip edilen ürünler yüklenirken hata:", error);
+    addedItemsContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: #f44336;">Ürünler yüklenirken hata oluştu.</div>';
+  } finally {
+    isLoadingProducts = false;
+  }
+}
+
+/**
+ * Ürün ekleme işlemi
+ */
+async function handleAddProduct() {
+  const linkInput = document.querySelector('.linkInput');
+  const addButton = document.querySelector('.addButton');
+  
+  if (!linkInput || !addButton) {
+    console.error('Link input veya add button bulunamadı');
+    return;
+  }
+  
+  const productUrl = linkInput.value.trim();
+  
+  if (!productUrl) {
+    showToast('Lütfen bir ürün linki girin.', 'error');
+    return;
+  }
+  
+  if (!productUrl.includes('zara.com')) {
+    showToast('Sadece Zara ürün linkleri desteklenmektedir.', 'error');
+    return;
+  }
+  
+  // Button'u devre dışı bırak
+  addButton.disabled = true;
+  addButton.textContent = 'Ekleniyor...';
+  addButton.style.opacity = '0.6';
+  
+  try {
+    console.log('🔄 Ürün ekleniyor:', productUrl);
+    
+    const response = await trackProduct(productUrl);
+    
+    if (response.success) {
+      console.log('✅ Ürün başarıyla eklendi:', response.product);
+      
+      // Input'u temizle
+      linkInput.value = '';
+      
+      // Başarı toast mesajı
+      showToast(`"${response.product.title}" takip listesine eklendi!`, 'success');
+      
+      // Yeni ürünü smooth olarak ekle
+      const newProductForUI = {
+        id: response.product.id,
+        imgSrc: response.product.imageUrl ? `/api/image-proxy?url=${encodeURIComponent(response.product.imageUrl)}` : 'Images/zara.png',
+        brandLogoSrc: 'Images/zara.png',
+        title: response.product.title,
+        brand: 'Zara',
+        addedPrice: response.product.price,
+        productUrl: response.product.productUrl || '#'
+      };
+      
+      // Mevcut container boşsa tümünü yükle, değilse sadece yeni ürünü ekle
+      if (currentProducts.length === 0) {
+        await loadUserTrackedProducts();
+      } else {
+        addProductWithAnimation(addedItemsContainer, newProductForUI);
+        // currentProducts'a da ekle
+        currentProducts.push(newProductForUI);
+      }
+      
+    } else {
+      console.error('❌ Ürün eklenemedi:', response.message);
+      showToast(response.message || 'Ürün eklenirken bir hata oluştu.', 'error');
+    }
+    
+  } catch (error) {
+    console.error('❌ Ürün eklenirken hata:', error);
+    showToast(error.message || 'Ürün eklenirken bir hata oluştu.', 'error');
+  } finally {
+    // Button'u tekrar aktif et
+    addButton.disabled = false;
+    addButton.textContent = 'Ekle';
+    addButton.style.opacity = '1';
+  }
+}
+
+/**
+ * Ürün kaldırma onayı göster
+ */
+function showRemoveConfirmation(productId, productTitle) {
+  const confirmationToast = document.createElement('div');
+  confirmationToast.id = `confirmation-${Date.now()}`;
+  confirmationToast.innerHTML = `
+    <div style="
+      background: white;
+      border: 2px solid #ff4444;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+      max-width: 380px;
+      text-align: center;
+    ">
+      <div style="margin-bottom: 15px; color: #333; font-size: 16px;">
+        Silmek istediğinize emin misiniz?
+      </div>
+      <div style="display: flex; gap: 10px; justify-content: center;">
+        <button class="cancel-btn" data-toast-id="${confirmationToast.id}" style="
+          background: #f5f5f5;
+          border: 1px solid #ddd;
+          border-radius: 6px;
+          padding: 8px 16px;
+          cursor: pointer;
+          font-size: 14px;
+        ">İptal</button>
+        <button class="confirm-btn" data-product-id="${productId}" data-toast-id="${confirmationToast.id}" style="
+          background: #ff4444;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          padding: 8px 16px;
+          cursor: pointer;
+          font-size: 14px;
+        ">Evet</button>
+      </div>
+    </div>
+  `;
+  
+  confirmationToast.style.cssText = `
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10001;
+    animation: slideUp 0.3s ease-out;
+  `;
+  
+  // Event listener'ları ekle
+  const cancelBtn = confirmationToast.querySelector('.cancel-btn');
+  const confirmBtn = confirmationToast.querySelector('.confirm-btn');
+  
+  cancelBtn.addEventListener('click', () => {
+    removeConfirmationToast(confirmationToast.id);
+  });
+  
+  confirmBtn.addEventListener('click', async () => {
+    const productId = confirmBtn.dataset.productId;
+    removeConfirmationToast(confirmationToast.id);
+    await handleRemoveProduct(productId);
+  });
+  
+  document.body.appendChild(confirmationToast);
+  
+  // 10 saniye sonra otomatik kapat
+  setTimeout(() => {
+    if (document.getElementById(confirmationToast.id)) {
+      removeConfirmationToast(confirmationToast.id);
+    }
+  }, 10000);
+}
+
+/**
+ * Onay toast'ını kaldır
+ */
+function removeConfirmationToast(toastId) {
+  const toast = document.getElementById(toastId);
+  if (toast) {
+    toast.style.animation = 'slideDown 0.3s ease-in';
+    setTimeout(() => toast.remove(), 300);
+  }
+}
+
+/**
+ * Ürün kaldırma fonksiyonu
+ */
+async function handleRemoveProduct(productId) {
+  try {
+    console.log('🗑️ Ürün kaldırılıyor:', productId);
+    
+    const response = await untrackProduct(productId);
+    
+    if (response.success) {
+      console.log('✅ Ürün başarıyla kaldırıldı');
+      
+      // Başarı toast mesajı
+      showToast('Ürün takip listesinden kaldırıldı.', 'success');
+      
+      // Takip edilen ürünleri yeniden yükle
+      await loadUserTrackedProducts();
+      
+    } else {
+      showToast('Ürün kaldırılırken bir hata oluştu.', 'error');
+    }
+    
+  } catch (error) {
+    console.error('❌ Ürün kaldırılırken hata:', error);
+    showToast('Ürün kaldırılırken hata oluştu.', 'error');
   }
 }
 
@@ -251,5 +655,9 @@ logoutButton.addEventListener("click", function(e) {
   
   logout();
 });
+
+// Event Listeners - initializePage'de ekleniyor
+
+// Ürün kaldırma için event delegation - initializePage'de ekleniyor
 
 window.addEventListener("DOMContentLoaded", initializePage);

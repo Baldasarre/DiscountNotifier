@@ -1,5 +1,5 @@
 const db = require('../config/database'); 
-
+const { setSessionCookie } = require('../utils/helpers');
 
 function authenticate(req, res, next) {
     const sessionId = req.cookies.sessionId;
@@ -19,6 +19,9 @@ function authenticate(req, res, next) {
             res.clearCookie("sessionId", { path: '/' });
             return res.status(401).json({ error: "Geçersiz oturum." });
         }
+        
+        // Her istekte cookie'yi yenile (1 hafta süre ile)
+        setSessionCookie(res, user.id);
         
         req.user = user; 
         next();

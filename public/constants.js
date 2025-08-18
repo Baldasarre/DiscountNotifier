@@ -32,6 +32,14 @@ export const API_ENDPOINTS = {
   LOGOUT: '/api/logout'
 };
 
+export const COOKIE_CONFIG = {
+  SESSION_DURATION: 1000 * 60 * 60 * 24 * 7, // 1 hafta (7 gün)
+  HTTP_ONLY: true,
+  SECURE: false, // Browser'da process.env kullanılamaz, development için false
+  SAME_SITE: "Lax",
+  PATH: "/"
+};
+
 export const ERROR_MESSAGES = {
   EMAIL_EMPTY: 'E-posta adresi boş olamaz!',
   EMAIL_INVALID: 'Geçerli bir e-posta adresi giriniz!',

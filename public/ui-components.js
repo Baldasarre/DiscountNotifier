@@ -11,13 +11,8 @@ const brandsData = [
   { value: "Pull&Bear", logo: "Images/pb.png" },
 ];
 
-const userTrackedProducts = [
-  {
-    id: 1, imgSrc: "Images/1.jpg", brandLogoSrc: "Images/zara.png",
-    title: "YIKANMIŞ KAPİTONE CEKET", discountStatus: "ÜRÜN HENÜZ İNDİRİME GİRMEDİ",
-    addedPrice: "940,00 TL", productUrl: "#",
-  },
-];
+// Mock ürünler kaldırıldı - artık sadece gerçek takip edilen ürünler gösterilecek
+const userTrackedProducts = [];
 
 export function renderBrandButtons(container) {
   const html = brandsData.map(brand => `
@@ -30,35 +25,44 @@ export function renderBrandButtons(container) {
 }
 
 export function createProductCardHTML(product) {
-    const priceText = product.addedPrice || `Fiyat: ${product.new_price.toFixed(2)} TL`;
-    const discountStatusText = product.discountStatus || "TAKİP EDİLİYOR";
+    const priceText = product.addedPrice || product.price || 'Fiyat bilgisi yok';
     const brandLogo = product.brandLogoSrc || `Images/zara.png`;
+    const imgSrc = product.imgSrc || product.imageUrl || 'Images/zara.png';
 
     return `
       <div class="addedItemBox" data-id="${product.id}">
-        <img class="itemImg" src="${product.imgSrc}" alt="${product.title}" />
+        <img class="itemImg" src="${imgSrc}" alt="${product.title}" />
         <div class="addedItemButtonsAndInfoBox">
           <div class="addedItemInfoBox">
             <img class="itemBrandImg" src="${brandLogo}" alt="${product.brand || 'Zara'}" />
-            <button id="removeItem"><img id="removeItemImg" src="Images/close-icon.png" alt="Kaldır"></button>
-          </div>
-          <h1 class="itemTitle">${product.title}</h1>
-          <h1 class="itemDiscountStatus">${discountStatusText}</h1>
-          <p class="itemInfo">${priceText}</p>
-          <div class="addedItemImgBoxButtons">
             <button onclick="window.open('${product.productUrl}', '_blank')" id="goToTheProduct" class="itemButtons">
               Ürüne Git
             </button>
+            <button id="removeItem"><img id="removeItemImg" src="Images/close-icon.png" alt="Kaldır"></button>
           </div>
+          <h1 class="itemTitle">${product.title}</h1>
+          <p class="itemInfo">${priceText}</p>
         </div>
       </div>`;
 }
 
 export function renderProductCards(container, products) {
-  if (!products || products.length === 0) {
-    container.innerHTML = "";
+  if (!container) {
+    console.error('Container bulunamadı');
     return;
   }
+  
+  if (!products || products.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 40px; color: #666;">
+        <h3>Henüz takip ettiğin ürün yok</h3>
+        <p>Yukarıdaki alana bir Zara ürün linkini yapıştırarak takip etmeye başlayabilirsin.</p>
+      </div>
+    `;
+    return;
+  }
+  
+  console.log('Ürünler render ediliyor:', products.length, 'ürün');
   const allCardsHTML = products.map(product => createProductCardHTML(product)).join('');
   container.innerHTML = allCardsHTML;
 }
