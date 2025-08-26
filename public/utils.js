@@ -1,4 +1,3 @@
-// DOM Utility Functions
 export const DOMUtils = {
   getElement(id) {
     return document.getElementById(id);
@@ -10,12 +9,12 @@ export const DOMUtils = {
 
   showElement(id) {
     const element = this.getElement(id);
-    if (element) element.style.display = 'flex';
+    if (element) element.style.display = "flex";
   },
 
   hideElement(id) {
     const element = this.getElement(id);
-    if (element) element.style.display = 'none';
+    if (element) element.style.display = "none";
   },
 
   addClass(id, className) {
@@ -61,12 +60,11 @@ export const DOMUtils = {
   setBackgroundColor(id, color) {
     const element = this.getElement(id);
     if (element) element.style.backgroundColor = color;
-  }
+  },
 };
 
-// Error Handling Utility
 export const ErrorHandler = {
-  handle(err, context = '') {
+  handle(err, context = "") {
     const errorType = this.categorizeError(err);
     this.logError(errorType, err, context);
     this.takeAction(errorType, err);
@@ -74,48 +72,45 @@ export const ErrorHandler = {
   },
 
   categorizeError(err) {
-    if (err.name === 'TypeError' && err.message.includes('fetch')) {
-      return 'NETWORK_ERROR';
+    if (err.name === "TypeError" && err.message.includes("fetch")) {
+      return "NETWORK_ERROR";
     } else if (err.status === 500) {
-      return 'SERVER_ERROR';
+      return "SERVER_ERROR";
     } else if (err.status === 401) {
-      return 'AUTH_ERROR';
+      return "AUTH_ERROR";
     } else if (err.status === 429) {
-      return 'RATE_LIMIT_ERROR';
+      return "RATE_LIMIT_ERROR";
     }
-    return 'UNKNOWN_ERROR';
+    return "UNKNOWN_ERROR";
   },
 
   logError(type, err, context) {
     const messages = {
-      'NETWORK_ERROR': 'İnternet bağlantı hatası',
-      'SERVER_ERROR': 'Sunucu hatası',
-      'AUTH_ERROR': 'Yetkilendirme hatası',
-      'RATE_LIMIT_ERROR': 'Rate limit hatası',
-      'UNKNOWN_ERROR': 'Beklenmeyen hata'
+      NETWORK_ERROR: "İnternet bağlantı hatası",
+      SERVER_ERROR: "Sunucu hatası",
+      AUTH_ERROR: "Yetkilendirme hatası",
+      RATE_LIMIT_ERROR: "Rate limit hatası",
+      UNKNOWN_ERROR: "Beklenmeyen hata",
     };
-    
-    const contextInfo = context ? ` (${context})` : '';
+
+    const contextInfo = context ? ` (${context})` : "";
     console.error(`${messages[type]}${contextInfo}:`, err);
   },
 
   takeAction(type, err) {
     switch (type) {
-      case 'AUTH_ERROR':
+      case "AUTH_ERROR":
         localStorage.clear();
-        window.location.replace('/');
+        window.location.replace("/");
         break;
-      case 'NETWORK_ERROR':
-        // Could show user-friendly message
+      case "NETWORK_ERROR":
         break;
       default:
-        // No specific action needed
         break;
     }
-  }
+  },
 };
 
-// Validation Utility
 export const ValidationUtils = {
   isValidEmail(email) {
     const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -127,17 +122,16 @@ export const ValidationUtils = {
   },
 
   isEmpty(value) {
-    return !value || value.trim() === '';
-  }
+    return !value || value.trim() === "";
+  },
 };
 
-// Storage Utility
 export const StorageUtils = {
   set(key, value) {
     try {
       localStorage.setItem(key, value);
     } catch (error) {
-      console.error('LocalStorage set error:', error);
+      console.error("LocalStorage set error:", error);
     }
   },
 
@@ -145,7 +139,7 @@ export const StorageUtils = {
     try {
       return localStorage.getItem(key);
     } catch (error) {
-      console.error('LocalStorage get error:', error);
+      console.error("LocalStorage get error:", error);
       return null;
     }
   },
@@ -154,7 +148,7 @@ export const StorageUtils = {
     try {
       localStorage.removeItem(key);
     } catch (error) {
-      console.error('LocalStorage remove error:', error);
+      console.error("LocalStorage remove error:", error);
     }
   },
 
@@ -162,7 +156,7 @@ export const StorageUtils = {
     try {
       localStorage.clear();
     } catch (error) {
-      console.error('LocalStorage clear error:', error);
+      console.error("LocalStorage clear error:", error);
     }
-  }
+  },
 };

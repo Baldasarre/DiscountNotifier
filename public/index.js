@@ -1,20 +1,19 @@
-import { fetchWithCsrf } from './apis.js';
-import { 
-  DELAYS, 
-  ERROR_MESSAGES, 
-  SUCCESS_MESSAGES, 
+import { fetchWithCsrf } from "./apis.js";
+import {
+  DELAYS,
+  ERROR_MESSAGES,
+  SUCCESS_MESSAGES,
   ROUTES,
   API_ENDPOINTS,
-  UI_STATES
-} from './constants.js';
-import { 
-  DOMUtils, 
-  ErrorHandler, 
-  ValidationUtils, 
-  StorageUtils 
-} from './utils.js';
+  UI_STATES,
+} from "./constants.js";
+import {
+  DOMUtils,
+  ErrorHandler,
+  ValidationUtils,
+  StorageUtils,
+} from "./utils.js";
 
-// DOM Elements
 const signInButton = document.getElementById("signInButton");
 const emailInput = document.getElementById("emailInput");
 const sendItButton = document.getElementById("sendIt");
@@ -34,17 +33,19 @@ async function handleSubmission() {
       showMessage(ERROR_MESSAGES.EMAIL_INVALID);
       return;
     }
-    
+
     try {
-      const response = await fetchWithCsrf(API_ENDPOINTS.SAVE, 'POST', { email: value });
+      const response = await fetchWithCsrf(API_ENDPOINTS.SAVE, "POST", {
+        email: value,
+      });
       console.log("Save response status:", response.status);
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error("Save error response:", errorText);
         throw new Error(`Server hatası (${response.status}): ${errorText}`);
       }
-      
+
       const result = await response.json();
       console.log("Save result:", result);
 
@@ -59,10 +60,12 @@ async function handleSubmission() {
         showMessage("Sunucu hatası: " + (result.error || "Bilinmeyen hata"));
       }
     } catch (err) {
-      ErrorHandler.handle(err, 'emailSubmission');
-      showErrMessage(ErrorHandler.categorizeError(err) === 'NETWORK_ERROR' 
-        ? ERROR_MESSAGES.NETWORK_ERROR 
-        : ERROR_MESSAGES.SERVER_ERROR);
+      ErrorHandler.handle(err, "emailSubmission");
+      showErrMessage(
+        ErrorHandler.categorizeError(err) === "NETWORK_ERROR"
+          ? ERROR_MESSAGES.NETWORK_ERROR
+          : ERROR_MESSAGES.SERVER_ERROR
+      );
     }
   } else if (mode === "code") {
     const code = value;
@@ -70,9 +73,12 @@ async function handleSubmission() {
       showMessage(ERROR_MESSAGES.CODE_INVALID);
       return;
     }
-    
+
     try {
-      const response = await fetchWithCsrf(API_ENDPOINTS.VERIFY_CODE, 'POST', { email: currentEmail, code });
+      const response = await fetchWithCsrf(API_ENDPOINTS.VERIFY_CODE, "POST", {
+        email: currentEmail,
+        code,
+      });
       const result = await response.json();
 
       if (result.success) {
@@ -88,7 +94,7 @@ async function handleSubmission() {
         showMessage(result.error || ERROR_MESSAGES.VERIFICATION_FAILED);
       }
     } catch (err) {
-      ErrorHandler.handle(err, 'codeVerification');
+      ErrorHandler.handle(err, "codeVerification");
       showMessage(ERROR_MESSAGES.CODE_CHECK_ERROR);
     }
     DOMUtils.setValue("emailInput", "");
@@ -96,6 +102,9 @@ async function handleSubmission() {
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
+
+  initializeGoogleAuth();
+  
   try {
     const res = await fetch(API_ENDPOINTS.CHECK_SESSION, {
       credentials: "include",
@@ -105,22 +114,19 @@ window.addEventListener("DOMContentLoaded", async () => {
       DOMUtils.setText("signInButton", SUCCESS_MESSAGES.SESSION_ACTIVE);
       DOMUtils.setDisabled("signInButton", true);
       DOMUtils.getElement("signInButton").style.cursor = "wait";
-      
-      // Check if user has gender selected
+
       try {
         const userInfoRes = await fetch(API_ENDPOINTS.USER_INFO, {
           credentials: "include",
         });
         const userInfo = await userInfoRes.json();
-        
+
         if (userInfo.success && userInfo.gender) {
-          // User has gender, go to dashboard
           DOMUtils.setText("signInButton", SUCCESS_MESSAGES.REDIRECTING);
           setTimeout(() => {
             window.location.href = ROUTES.DASHBOARD;
           }, DELAYS.REDIRECT_LONG);
         } else {
-          // No gender, go to category selection
           DOMUtils.setText("signInButton", SUCCESS_MESSAGES.CATEGORY_REDIRECT);
           setTimeout(() => {
             window.location.href = ROUTES.CATEGORY;
@@ -128,7 +134,6 @@ window.addEventListener("DOMContentLoaded", async () => {
         }
       } catch (err) {
         console.error("User info kontrol hatası:", err);
-        // Fallback to category
         setTimeout(() => {
           window.location.href = ROUTES.CATEGORY;
         }, DELAYS.REDIRECT_LONG);
@@ -142,7 +147,10 @@ window.addEventListener("DOMContentLoaded", async () => {
 signInButton.addEventListener("click", (event) => {
   event.preventDefault();
   DOMUtils.addClass("signInButton", UI_STATES.BUTTON_CLICKED);
-  setTimeout(() => DOMUtils.removeClass("signInButton", UI_STATES.BUTTON_CLICKED), DELAYS.BUTTON_ANIMATION);
+  setTimeout(
+    () => DOMUtils.removeClass("signInButton", UI_STATES.BUTTON_CLICKED),
+    DELAYS.BUTTON_ANIMATION
+  );
   setTimeout(() => {
     DOMUtils.hideElement("signInButton");
     DOMUtils.showElement("emailInput");
@@ -154,7 +162,10 @@ signInButton.addEventListener("click", (event) => {
 sendItButton.addEventListener("click", (event) => {
   event.preventDefault();
   DOMUtils.addClass("sendIt", UI_STATES.BUTTON_CLICKED);
-  setTimeout(() => DOMUtils.removeClass("sendIt", UI_STATES.BUTTON_CLICKED), DELAYS.BUTTON_ANIMATION);
+  setTimeout(
+    () => DOMUtils.removeClass("sendIt", UI_STATES.BUTTON_CLICKED),
+    DELAYS.BUTTON_ANIMATION
+  );
   handleSubmission();
 });
 
@@ -177,3 +188,60 @@ function showErrMessage(msg) {
   DOMUtils.setPlaceholder("emailInput", msg);
   DOMUtils.setDisabled("emailInput", true);
 }
+
+
+function initializeGoogleAuth() {
+  const googleAuthSection = document.getElementById("googleAuthSection");
+  const googleSignInButton = document.getElementById("googleSignInButton");
+
+
+  if (googleAuthSection) {
+    googleAuthSection.style.display = "flex";
+  }
+
+
+  if (googleSignInButton) {
+    googleSignInButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      handleGoogleSignIn();
+    });
+  }
+
+
+  checkAuthStatus();
+}
+
+function handleGoogleSignIn() {
+  try {
+
+    window.location.href = "/auth/google";
+  } catch (error) {
+    console.error("Google Sign-In error:", error);
+    showMessage("Google ile giriş sırasında bir hata oluştu.");
+  }
+}
+
+function checkAuthStatus() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const authStatus = urlParams.get("auth");
+  const error = urlParams.get("error");
+
+  if (error) {
+    let errorMessage = "Giriş sırasında bir hata oluştu.";
+    
+    switch (error) {
+      case "google_auth_failed":
+        errorMessage = "Google ile giriş başarısız oldu.";
+        break;
+      case "user_not_found":
+        errorMessage = "Kullanıcı bulunamadı.";
+        break;
+      case "auth_error":
+        errorMessage = "Kimlik doğrulama hatası.";
+        break;
+    }
+    
+    showErrMessage(errorMessage);
+  }
+}
+

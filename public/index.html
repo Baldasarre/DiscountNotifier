@@ -8,7 +8,7 @@
     <meta name="keywords" content="discount,sale,indirim" />
     <meta name="description" content="kunto" />
 
-    <!-- Optimized Google Fonts -->
+      
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -16,7 +16,7 @@
       rel="stylesheet"
     />
 
-    <!-- Stylesheet -->
+    
     <link rel="stylesheet" href="index.css" />
   </head>
 
@@ -28,17 +28,26 @@
     </section>
 
     <section id="signInSection">
-      <input
-        type="email"
-        id="emailInput"
-        placeholder="E-Posta Adresinizi Girin"
-        style="display: none"
-        maxlength="30"
-      />
-      <button id="signInButton">İndirimleri Takip Etmeye Başla</button>
-      <button id="sendIt">
-        <img id="sendItArrow" src="Images/right-arrow2.png" alt="" />
-      </button>
+      <div class="main-signin-container">
+        <input
+          type="email"
+          id="emailInput"
+          placeholder="E-Posta Adresinizi Girin"
+          style="display: none"
+          maxlength="30"
+        />
+        <button id="signInButton">E-posta ile İndirimleri Takip Etmeye Başla</button>
+        <button id="sendIt">
+          <img id="sendItArrow" src="Images/right-arrow2.png" alt="" />
+        </button>
+      </div>
+    
+      <div id="googleAuthSection">
+        <div class="auth-divider">
+          <span>veya</span>
+        </div>
+        <button id="googleSignInButton" class="google-auth-btn"><img id="googleIcon" src="Images/google.png" alt="">Google ile Devam Et</button>
+      </div>
     </section>
 
     <footer class="footer">

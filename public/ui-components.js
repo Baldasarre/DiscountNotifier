@@ -1,5 +1,3 @@
-// public/ui-components.js
-
 const brandsData = [
   { value: "Zara", logo: "Images/zara.png" },
   { value: "Mango", logo: "Images/mango.png" },
@@ -11,31 +9,38 @@ const brandsData = [
   { value: "Pull&Bear", logo: "Images/pb.png" },
 ];
 
-// Mock ürünler kaldırıldı - artık sadece gerçek takip edilen ürünler gösterilecek
 const userTrackedProducts = [];
 
 export function renderBrandButtons(container) {
-  const html = brandsData.map(brand => `
+  const html = brandsData
+    .map(
+      (brand) => `
     <label class="checkboxLabel">
       <input class="checkboxBrand" type="checkbox" name="brands" value="${brand.value}" />
       <img class="brandLogos" src="${brand.logo}" alt="${brand.value}" />
     </label>
-  `).join('');
+  `
+    )
+    .join("");
   container.innerHTML = html;
 }
 
 export function createProductCardHTML(product) {
-    const priceText = product.addedPrice || product.price || 'Fiyat bilgisi yok';
-    const brandLogo = product.brandLogoSrc || `Images/zara.png`;
-    const imgSrc = product.imgSrc || product.imageUrl || 'Images/zara.png';
+  const priceText = product.addedPrice || product.price || "Fiyat bilgisi yok";
+  const brandLogo = product.brandLogoSrc || `Images/zara.png`;
+  const imgSrc = product.imgSrc || product.imageUrl || "Images/zara.png";
 
-    return `
+  return `
       <div class="addedItemBox" data-id="${product.id}">
         <img class="itemImg" src="${imgSrc}" alt="${product.title}" />
         <div class="addedItemButtonsAndInfoBox">
           <div class="addedItemInfoBox">
-            <img class="itemBrandImg" src="${brandLogo}" alt="${product.brand || 'Zara'}" />
-            <button onclick="window.open('${product.productUrl}', '_blank')" id="goToTheProduct" class="itemButtons">
+            <img class="itemBrandImg" src="${brandLogo}" alt="${
+    product.brand || "Zara"
+  }" />
+            <button onclick="window.open('${
+              product.productUrl
+            }', '_blank')" id="goToTheProduct" class="itemButtons">
               Ürüne Git
             </button>
             <button id="removeItem"><img id="removeItemImg" src="Images/close-icon.png" alt="Kaldır"></button>
@@ -48,10 +53,10 @@ export function createProductCardHTML(product) {
 
 export function renderProductCards(container, products) {
   if (!container) {
-    console.error('Container bulunamadı');
+    console.error("Container bulunamadı");
     return;
   }
-  
+
   if (!products || products.length === 0) {
     container.innerHTML = `
       <div style="text-align: center; padding: 40px; color: #666;">
@@ -61,9 +66,22 @@ export function renderProductCards(container, products) {
     `;
     return;
   }
+
+  console.log("🎨 Ürünler render ediliyor:", products.length, "ürün");
+  console.log("🔍 Ürün ID'leri:", products.map(p => p.id));
   
-  console.log('Ürünler render ediliyor:', products.length, 'ürün');
-  const allCardsHTML = products.map(product => createProductCardHTML(product)).join('');
+
+  const ids = products.map(p => p.id);
+  const uniqueIds = [...new Set(ids)];
+  if (ids.length !== uniqueIds.length) {
+    console.warn("⚠️ DUPLICATE ÜRÜNLER BULUNDU!");
+    console.log("Tüm ID'ler:", ids);
+    console.log("Unique ID'ler:", uniqueIds);
+  }
+  
+  const allCardsHTML = products
+    .map((product) => createProductCardHTML(product))
+    .join("");
   container.innerHTML = allCardsHTML;
 }
 
