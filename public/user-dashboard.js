@@ -9,6 +9,7 @@ import {
   fetchTrackedProducts,
   trackProduct,
   untrackProduct,
+  untrackBershkaProduct,
 } from "./apis.js";
 import {
   DELAYS,
@@ -34,7 +35,6 @@ const editCategoryButton = document.getElementById("editCategoryButton");
 const menuButton = document.getElementById("menuButton");
 const menuDropdown = document.getElementById("menuDropdown");
 
-// Cache brand checkboxes for better performance
 let brandCheckboxes = null;
 
 const email = StorageUtils.get("userEmail");
@@ -94,6 +94,24 @@ function addProductWithAnimation(container, newProduct) {
 
   container.appendChild(newCard);
 
+  const img = newCard.querySelector(".itemImg");
+  if (img) {
+    img.onload = () => {
+      console.log("🖼️ Dynamic image loaded:", img.src);
+    };
+    img.onerror = () => {
+      console.error("❌ Dynamic image failed to load:", img.src);
+
+      img.src =
+        newProduct.brandLogoSrc ||
+        `Images/${newProduct.brand?.toLowerCase() || "zara"}.png`;
+    };
+
+    if (img.complete && img.naturalWidth === 0) {
+      img.src = img.src;
+    }
+  }
+
   requestAnimationFrame(() => {
     setTimeout(() => {
       newCard.style.opacity = "1";
@@ -115,7 +133,7 @@ function showToast(message, type = "success") {
 
   toast.style.cssText = `
     position: fixed;
-    top: 100px;
+    bottom: 100px;
     left: 50%;
     transform: translateX(-50%);
     background: ${type === "success" ? "#4CAF50" : "#f44336"};
@@ -196,7 +214,6 @@ async function savePreferences(isGenderSelection = false) {
 async function initializePage() {
   console.log("Dashboard InitializePage başlatıldı");
 
-  // DOM elementlerini initialize et
   addedItemsContainer = document.querySelector(".addedItemBoxes");
   if (!addedItemsContainer) {
     console.error("❌ addedItemsContainer bulunamadı!");
@@ -204,7 +221,6 @@ async function initializePage() {
   }
   console.log("✅ addedItemsContainer bulundu:", addedItemsContainer);
 
-  // Event listener'ları ekle
   addedItemsContainer.addEventListener("click", (e) => {
     if (e.target.id === "removeItem" || e.target.id === "removeItemImg") {
       e.preventDefault();
@@ -222,7 +238,6 @@ async function initializePage() {
     }
   });
 
-  // Add button ve link input event listener'ları
   const addButton = document.querySelector(".addButton");
   const linkInput = document.querySelector(".linkInput");
 
@@ -249,20 +264,21 @@ async function initializePage() {
   addBrandCheckboxListeners();
 
   try {
-    // Google Auth kullanıcıları için email kontrolü yapmadan önce session kontrolü yap
     const sessionCheck = await fetch(API_ENDPOINTS.CHECK_SESSION, {
       credentials: "include",
     });
     const sessionData = await sessionCheck.json();
-    
+
     if (!sessionData.loggedIn) {
       console.log("Session bulunamadı, index'e yönlendiriliyor...");
       window.location.replace(ROUTES.INDEX);
       return;
     }
-    
-    // Session varsa email'i storage'a kaydet (Google Auth için)
-    if (sessionData.email && (!email || email === "null" || email === "undefined")) {
+
+    if (
+      sessionData.email &&
+      (!email || email === "null" || email === "undefined")
+    ) {
       StorageUtils.set("userEmail", sessionData.email);
       console.log("Email session'dan storage'a kaydedildi:", sessionData.email);
     }
@@ -316,9 +332,11 @@ async function initializePage() {
 async function loadUserTrackedProducts() {
   const timestamp = new Date().toISOString();
   console.log(`🟢 [${timestamp}] loadUserTrackedProducts BAŞLADI`);
-  
+
   if (isLoadingProducts) {
-    console.log(`⚠️ [${timestamp}] loadUserTrackedProducts zaten çalışıyor, atlanıyor...`);
+    console.log(
+      `⚠️ [${timestamp}] loadUserTrackedProducts zaten çalışıyor, atlanıyor...`
+    );
     return;
   }
 
@@ -352,12 +370,7 @@ async function loadUserTrackedProducts() {
     } else {
       console.log("📝 Henüz takip edilen ürün bulunmuyor");
       console.log("🔍 Response detayları:", response);
-      addedItemsContainer.innerHTML = `
-        <div style="text-align: center; padding: 40px; color: #666;">
-          <h3>Henüz takip ettiğin ürün yok</h3>
-          <p>Yukarıdaki alana bir Zara ürün linkini yapıştırarak takip etmeye başlayabilirsin.</p>
-        </div>
-      `;
+      renderProductCards(addedItemsContainer, []);
       currentProducts = [];
     }
 
@@ -365,7 +378,7 @@ async function loadUserTrackedProducts() {
   } catch (error) {
     console.error("❌ Takip edilen ürünler yüklenirken hata:", error);
     addedItemsContainer.innerHTML =
-      '<div style="text-align: center; padding: 20px; color: #f44336;">Ürünler yüklenirken hata oluştu.</div>';
+      '<div style="width: 40rem;position: relative;text-align: center;padding: 40px;color: #666;left: 50%;">Ürünler yüklenirken hata oluştu.</div>';
   } finally {
     isLoadingProducts = false;
   }
@@ -387,8 +400,15 @@ async function handleAddProduct() {
     return;
   }
 
-  if (!productUrl.includes("zara.com")) {
-    showToast("Sadece Zara ürün linkleri desteklenmektedir.", "error");
+  if (
+    !productUrl.includes("zara.com") &&
+    !productUrl.includes("bershka.com") &&
+    !productUrl.includes("stradivarius.com")
+  ) {
+    showToast(
+      "Sadece Zara, Bershka ve Stradivarius ürün linkleri desteklenmektedir.",
+      "error"
+    );
     return;
   }
 
@@ -402,41 +422,86 @@ async function handleAddProduct() {
     const response = await trackProduct(productUrl);
 
     if (response.success) {
-      console.log("✅ Ürün başarıyla eklendi:", response.product);
+      console.log("✅ Ürün başarıyla eklendi:", response);
+      console.log("🔍 Product detayları:", response.product);
+      console.log("🔍 Product keys:", Object.keys(response.product || {}));
 
       linkInput.value = "";
 
-      showToast(
-        `"${response.product.title}" takip listesine eklendi!`,
-        "success"
-      );
+      const productName =
+        response.product.title || response.product.name || "Ürün";
+      showToast(`${productName} takip listesine eklendi!`, "success");
+
+      const isBershka = productUrl.includes("bershka.com");
+      const isStradivarius = productUrl.includes("stradivarius.com");
+      const isZara = productUrl.includes("zara.com");
+
+      if (response.product.imageUrl || response.product.image_url) {
+        const imageUrl =
+          response.product.imageUrl || response.product.image_url;
+        const imageKey = `product_image_${
+          response.product.id || response.product.product_id
+        }`;
+
+        let originalImageUrl = imageUrl;
+        if (imageUrl.includes("/api/image-proxy?url=")) {
+          const urlParam = imageUrl.split("url=")[1];
+          if (urlParam) {
+            originalImageUrl = decodeURIComponent(urlParam);
+          }
+        }
+        localStorage.setItem(imageKey, originalImageUrl);
+        console.log(
+          `💾 Orijinal fotoğraf URL localStorage'a kaydedildi: ${imageKey} -> ${originalImageUrl}`
+        );
+      }
+
+      let brandLogo, defaultImage, brandName;
+      if (isBershka) {
+        brandLogo = "Images/bershka.png";
+        defaultImage = "Images/bershka.png";
+        brandName = "Bershka";
+      } else if (isStradivarius) {
+        brandLogo = "Images/stradivarius.png";
+        defaultImage = "Images/stradivarius.png";
+        brandName = "Stradivarius";
+      } else {
+        brandLogo = "Images/zara.png";
+        defaultImage = "Images/zara.png";
+        brandName = "Zara";
+      }
 
       const newProductForUI = {
-        id: response.product.id,
-        imgSrc: response.product.imageUrl
-          ? `/api/image-proxy?url=${encodeURIComponent(
-              response.product.imageUrl
-            )}`
-          : "Images/zara.png",
-        brandLogoSrc: "Images/zara.png",
-        title: response.product.title,
-        brand: "Zara",
-        addedPrice: response.product.price,
-        productUrl: response.product.productUrl || "#",
+        id: response.product.id || response.product.product_id,
+        imgSrc:
+          response.product.imageUrl ||
+          response.product.imgSrc ||
+          response.product.image_url ||
+          defaultImage,
+        brandLogoSrc: brandLogo,
+        title: response.product.title || response.product.name,
+        brand: brandName,
+        addedPrice:
+          response.product.formattedPrice ||
+          response.product.price ||
+          response.product.sale_price ||
+          "Fiyat yükleniyor...",
+        productUrl:
+          response.product.productUrl || response.product.product_url || "#",
       };
 
-      // Yeni ürünü currentProducts array'ine ekle
+      console.log("🖼️ Yeni ürün UI objesi:", newProductForUI);
+      console.log("🖼️ Ürün imageUrl:", response.product.imageUrl);
+
       currentProducts.push(newProductForUI);
-      
-      // Eğer container boşsa, yeni ürünü animation ile ekle
-      const hasExistingProducts = addedItemsContainer.children.length > 0 && 
+
+      const hasExistingProducts =
+        addedItemsContainer.children.length > 0 &&
         !addedItemsContainer.querySelector('div[style*="text-align: center"]');
-      
+
       if (!hasExistingProducts) {
-        // Container boş veya sadece "henüz ürün yok" mesajı var
         renderProductCards(addedItemsContainer, currentProducts);
       } else {
-        // Zaten ürünler var, sadece yenisini animate ederek ekle
         addProductWithAnimation(addedItemsContainer, newProductForUI);
       }
     } else {
@@ -462,7 +527,6 @@ function showRemoveConfirmation(productId, productTitle) {
   confirmationToast.innerHTML = `
     <div style="
       background: white;
-      border: 2px solid #ff4444;
       border-radius: 12px;
       padding: 20px;
       box-shadow: 0 8px 32px rgba(0,0,0,0.15);
@@ -496,7 +560,7 @@ function showRemoveConfirmation(productId, productTitle) {
 
   confirmationToast.style.cssText = `
     position: fixed;
-    bottom: 30px;
+    bottom: 20%;
     left: 50%;
     transform: translateX(-50%);
     z-index: 10001;
@@ -535,16 +599,38 @@ function removeConfirmationToast(toastId) {
 
 async function handleRemoveProduct(productId) {
   try {
-    console.log("🗑️ Ürün kaldırılıyor:", productId);
+    const product = currentProducts.find((p) => p.id === productId);
+    const isBershka = product && product.brand === "Bershka";
 
-    const response = await untrackProduct(productId);
+    let response;
+    if (isBershka) {
+      response = await untrackBershkaProduct(productId);
+    } else {
+      response = await untrackProduct(productId);
+    }
 
     if (response.success) {
-      console.log("✅ Ürün başarıyla kaldırıldı");
-
       showToast("Ürün takip listesinden kaldırıldı.", "success");
 
-      await loadUserTrackedProducts();
+      const productElement = document.querySelector(`[data-id="${productId}"]`);
+      if (productElement) {
+        productElement.style.transition = "opacity 0.3s ease-out";
+        productElement.style.opacity = "0";
+
+        setTimeout(() => {
+          productElement.remove();
+
+          currentProducts = currentProducts.filter(
+            (product) => product.id !== productId
+          );
+
+          if (currentProducts.length === 0) {
+            renderProductCards(addedItemsContainer, []);
+          }
+
+          animateLinkBoxHeight();
+        }, 300);
+      }
     } else {
       showToast("Ürün kaldırılırken bir hata oluştu.", "error");
     }
@@ -648,5 +734,13 @@ logoutButton.addEventListener("click", function (e) {
 
   logout();
 });
+
+if (form) {
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    console.log("🚫 Form submit önlendi - handleAddProduct çağırılıyor");
+    handleAddProduct();
+  });
+}
 
 window.addEventListener("DOMContentLoaded", initializePage);

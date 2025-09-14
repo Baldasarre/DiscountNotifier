@@ -34,7 +34,11 @@ db.serialize(() => {
         createdAt TEXT,
         ip TEXT,
         userAgent TEXT,
-        referer TEXT
+        referer TEXT,
+        googleId TEXT,
+        provider TEXT,
+        displayName TEXT,
+        avatar TEXT
     )`,
     (err) => {
       if (err) {
@@ -114,25 +118,87 @@ db.serialize(() => {
   );
 
   db.run(
-    `CREATE TABLE IF NOT EXISTS user_tracked_products (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id TEXT NOT NULL,
-        product_id TEXT NOT NULL,
-        brand TEXT NOT NULL,
-        tracking_started_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        notification_sent INTEGER DEFAULT 0,
-        FOREIGN KEY (user_id) REFERENCES users (id),
-        UNIQUE(user_id, product_id, brand)
+    `CREATE TABLE IF NOT EXISTS stradivarius_categories (
+        id INTEGER PRIMARY KEY,
+        category_id TEXT UNIQUE NOT NULL,
+        category_name TEXT NOT NULL,
+        category_name_en TEXT,
+        key_field TEXT,
+        path TEXT,
+        is_active INTEGER DEFAULT 1,
+        last_updated TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )`,
     (err) => {
       if (err) {
         console.error(
-          "User tracked products tablosu oluşturulurken hata:",
+          "Stradivarius categories tablosu oluşturulurken hata:",
           err.message
         );
       } else {
         console.log(
-          "User tracked products tablosu başarıyla doğrulandı/oluşturuldu."
+          "Stradivarius categories tablosu başarıyla doğrulandı/oluşturuldu."
+        );
+      }
+    }
+  );
+
+  db.run(
+    `CREATE TABLE IF NOT EXISTS stradivarius_unique_product_details (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        unique_id TEXT UNIQUE NOT NULL,
+        product_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        brand TEXT DEFAULT 'stradivarius',
+        price INTEGER NOT NULL,
+        sale_price INTEGER,
+        currency TEXT DEFAULT 'TL',
+        availability TEXT,
+        sizes TEXT,
+        colors TEXT,
+        color_name TEXT,
+        color_code TEXT,
+        image_url TEXT,
+        product_url TEXT,
+        category_id TEXT,
+        last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`,
+    (err) => {
+      if (err) {
+        console.error(
+          "Stradivarius unique product details tablosu oluşturulurken hata:",
+          err.message
+        );
+      } else {
+        console.log(
+          "Stradivarius unique product details tablosu başarıyla doğrulandı/oluşturuldu."
+        );
+      }
+    }
+  );
+
+  db.run(
+    `CREATE TABLE IF NOT EXISTS bershka_categories (
+        id INTEGER PRIMARY KEY,
+        category_id TEXT UNIQUE NOT NULL,
+        category_name TEXT NOT NULL,
+        category_name_en TEXT,
+        key_field TEXT,
+        path TEXT,
+        is_active INTEGER DEFAULT 1,
+        last_updated TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )`,
+    (err) => {
+      if (err) {
+        console.error(
+          "Bershka categories tablosu oluşturulurken hata:",
+          err.message
+        );
+      } else {
+        console.log(
+          "Bershka categories tablosu başarıyla doğrulandı/oluşturuldu."
         );
       }
     }

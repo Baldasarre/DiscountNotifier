@@ -1,42 +1,41 @@
-const db = require('./database');
+const db = require("./database");
 
 function addGoogleAuthColumns() {
   return new Promise((resolve, reject) => {
     db.serialize(() => {
-
       db.all("PRAGMA table_info(users)", (err, columns) => {
         if (err) {
-          console.error('Table info error:', err);
+          console.error("Table info error:", err);
           return reject(err);
         }
 
-        const columnNames = columns.map(col => col.name);
+        const columnNames = columns.map((col) => col.name);
         const migrations = [];
 
-
-        if (!columnNames.includes('googleId')) {
+        if (!columnNames.includes("googleId")) {
           migrations.push("ALTER TABLE users ADD COLUMN googleId TEXT");
         }
-        
-        if (!columnNames.includes('provider')) {
-          migrations.push("ALTER TABLE users ADD COLUMN provider TEXT DEFAULT 'email'");
+
+        if (!columnNames.includes("provider")) {
+          migrations.push(
+            "ALTER TABLE users ADD COLUMN provider TEXT DEFAULT 'email'"
+          );
         }
-        
-        if (!columnNames.includes('displayName')) {
+
+        if (!columnNames.includes("displayName")) {
           migrations.push("ALTER TABLE users ADD COLUMN displayName TEXT");
         }
-        
-        if (!columnNames.includes('avatar')) {
+
+        if (!columnNames.includes("avatar")) {
           migrations.push("ALTER TABLE users ADD COLUMN avatar TEXT");
         }
 
         if (migrations.length === 0) {
-          console.log('✅ Tüm Google Auth kolonları zaten mevcut');
+          console.log("✅ Tüm Google Auth kolonları zaten mevcut");
           return resolve();
         }
 
-        console.log('🔄 Google Auth kolonları ekleniyor...');
-        
+        console.log("🔄 Google Auth kolonları ekleniyor...");
 
         let completed = 0;
         migrations.forEach((migration, index) => {
@@ -45,12 +44,16 @@ function addGoogleAuthColumns() {
               console.error(`Migration ${index + 1} failed:`, err);
               return reject(err);
             }
-            
+
             completed++;
-            console.log(`✅ Migration ${index + 1}/${migrations.length} tamamlandı`);
-            
+            console.log(
+              `✅ Migration ${index + 1}/${migrations.length} tamamlandı`
+            );
+
             if (completed === migrations.length) {
-              console.log('🎉 Tüm Google Auth migration\'ları başarıyla tamamlandı!');
+              console.log(
+                "🎉 Tüm Google Auth migration'ları başarıyla tamamlandı!"
+              );
               resolve();
             }
           });
@@ -60,15 +63,14 @@ function addGoogleAuthColumns() {
   });
 }
 
-
 if (require.main === module) {
   addGoogleAuthColumns()
     .then(() => {
-      console.log('Database migration completed successfully');
+      console.log("Database migration completed successfully");
       process.exit(0);
     })
     .catch((error) => {
-      console.error('Database migration failed:', error);
+      console.error("Database migration failed:", error);
       process.exit(1);
     });
 }

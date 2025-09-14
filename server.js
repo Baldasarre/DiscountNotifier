@@ -8,12 +8,14 @@ const rateLimit = require("express-rate-limit");
 const csrf = require("csurf");
 const passport = require("./config/passport");
 const userRoutes = require("./routes/user.routes");
-const productsRoutes = require("./routes/products.routes");
 const authRoutes = require("./routes/auth.routes");
+const simpleUnifiedRoutes = require("./routes/simple-unified.routes");
+const productsRoutes = require("./routes/products.routes");
 const schedulerService = require("./services/scheduler.service");
 const helmet = require("helmet");
 const config = require("./config/environment");
 const { setSessionCookie } = require("./utils/helpers");
+const imageProxyService = require("./services/image-proxy.service");
 const app = express();
 const PORT = 3000;
 
@@ -23,16 +25,18 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
 
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'fallback-secret-key',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24 saat
-  }
-}));
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "fallback-secret-key",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000, // 24 saat
+    },
+  })
+);
 
 app.use(passport.initialize());
 app.use(passport.session());
@@ -63,11 +67,14 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const csrfProtectedRoutes = express.Router();
+csrfProtectedRoutes.use(csrfProtection);
+
 app.post("/api/logout", (req, res) => {
   if (req.session) {
     req.session.destroy((err) => {
       if (err) {
-        console.error('Session destroy error:', err);
+        console.error("Session destroy error:", err);
       }
     });
   }
@@ -85,20 +92,23 @@ app.post("/api/logout", (req, res) => {
     sameSite: "Lax",
     path: "/",
   });
-  
+
   res.clearCookie("_csrf");
 
-  console.log('🚪 User logged out - all sessions cleared');
+  console.log("🚪 User logged out - all sessions cleared");
   res.json({ success: true, message: "Logout successful" });
 });
 
-app.get("/api/csrf-token", csrfProtection, (req, res) => {
+app.get("/api/csrf-token", csrfProtectedRoutes, (req, res) => {
   res.json({ csrfToken: req.csrfToken() });
 });
 
-app.use("/api", apiLimiter, csrfProtection, userRoutes);
+app.use("/api", apiLimiter, userRoutes);
+app.use("/api/simple", simpleUnifiedRoutes);
+console.log("✅ Simple unified routes loaded: /api/simple");
 
-app.use("/api/products", apiLimiter, productsRoutes);
+app.use("/api/products", productsRoutes);
+console.log("✅ Products routes restored: /api/products");
 
 app.use("/auth", authRoutes);
 
@@ -106,25 +116,12 @@ app.get("/api/image-proxy", async (req, res) => {
   try {
     const { url } = req.query;
 
-    if (!url || !url.startsWith("https://static.zara.net/")) {
-      return res.status(400).json({ error: "Geçersiz URL" });
-    }
+    const result = await imageProxyService.proxyImage(url);
 
-    const axios = require("axios");
-    const response = await axios.get(url, {
-      responseType: "stream",
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        Referer: "https://www.zara.com/",
-      },
-      timeout: 10000,
-    });
+    res.set("Content-Type", result.contentType);
+    res.set("Cache-Control", result.cacheControl);
 
-    res.set("Content-Type", response.headers["content-type"] || "image/jpeg");
-    res.set("Cache-Control", "public, max-age=86400");
-
-    response.data.pipe(res);
+    result.data.pipe(res);
   } catch (error) {
     console.error("Image proxy hatası:", error.message);
     res.status(404).send("Resim bulunamadı");
@@ -205,11 +202,7 @@ app.post("/api/scheduler/disable", (req, res) => {
 
 async function startServer() {
   try {
-    if (config.NODE_ENV === "development") {
-      await schedulerService.initialize();
-    } else {
-      await schedulerService.initialize();
-    }
+    await schedulerService.initialize();
 
     app.listen(PORT, () => {
       console.log(`🚀 Sunucu çalışıyor: http://localhost:${PORT}`);
@@ -226,13 +219,11 @@ async function startServer() {
 
 process.on("SIGINT", () => {
   console.log("\n🛑 Sunucu kapatılıyor...");
-  schedulerService.stopAll();
   process.exit(0);
 });
 
 process.on("SIGTERM", () => {
   console.log("\n🛑 Sunucu kapatılıyor...");
-  schedulerService.stopAll();
   process.exit(0);
 });
 

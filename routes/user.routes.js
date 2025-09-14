@@ -6,7 +6,7 @@ const {
   sendEmail,
   generateCode,
   setSessionCookie,
-} = require("../utils/helpers"); 
+} = require("../utils/helpers");
 const router = express.Router();
 
 router.post("/save", (req, res) => {

@@ -1,10 +1,12 @@
 const express = require("express");
 const router = express.Router();
-const zaraService = require("../services/zara.service");
+const productService = require("../services/product.service");
 const schedulerService = require("../services/scheduler.service");
 const authenticate = require("../middleware/authenticate");
 const csrf = require("csurf");
 const config = require("../config/environment");
+const zaraService = require("../services/zara.service");
+const bershkaService = require("../services/bershka.service");
 
 const csrfProtection = csrf({ cookie: true });
 
@@ -19,11 +21,13 @@ router.get("/", async (req, res) => {
     if (search) filters.search = search;
     if (availability) filters.availability = availability;
 
-    const products = await zaraService.getProductsFromDatabase(
-      parseInt(limit),
-      parseInt(offset),
-      filters
-    );
+    const result = await productService.getProducts({
+      brand: "zara",
+      limit: parseInt(limit),
+      page: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+      ...filters,
+    });
+    const products = result.products || [];
 
     const formattedProducts = products.map((product) => ({
       id: product.product_id,
@@ -68,62 +72,74 @@ router.get("/", async (req, res) => {
 router.get("/tracked", authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
-    console.log(`🔍 /tracked endpoint çağrıldı - User ID: ${userId} - ${new Date().toISOString()}`);
+    console.log(
+      `🔍 /tracked (SADECE ZARA) endpoint çağrıldı - User ID: ${userId} - ${new Date().toISOString()}`
+    );
     const db = require("../config/database");
 
-    const trackedProducts = await new Promise((resolve, reject) => {
-      db.all(
-        `
+    const trackedZaraProducts = await new Promise((resolve, reject) => {
+      const sqlQuery = `
                 SELECT 
                     utp.*,
                     zp.*
-                FROM user_tracked_products utp
+                FROM user_tracked_products_unified utp
                 JOIN zara_products zp ON utp.product_id = zp.product_id
-                WHERE utp.user_id = ?
+                WHERE utp.user_id = ? AND utp.brand = 'zara'
                 GROUP BY utp.product_id, utp.user_id, utp.brand
                 ORDER BY utp.tracking_started_at ASC
-            `,
-        [userId],
-        (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows);
-        }
-      );
+            `;
+
+      db.all(sqlQuery, [userId], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows || []);
+      });
     });
 
-    console.log(`📦 Database'den dönen ürün sayısı: ${trackedProducts.length}`);
-    console.log(`📝 Database raw data (ilk 2 ürün):`, trackedProducts.slice(0, 2).map(p => ({ id: p.product_id, name: p.name })));
+    const trackedProducts = trackedZaraProducts;
 
-    const formattedProducts = trackedProducts.map((product) => ({
-      id: product.product_id,
-      imgSrc: product.image_url
-        ? `/api/image-proxy?url=${encodeURIComponent(product.image_url)}`
-        : "Images/zara.png",
-      brandLogoSrc: "Images/zara.png",
-      title: product.name,
-      brand: "Zara",
-      discountStatus: product.is_on_sale ? "İNDİRİMDE!" : "TAKİP EDİLİYOR",
-      addedPrice: `${(product.price / 100).toFixed(2)} TL`,
-      originalPrice: product.price,
-      salePrice: product.sale_price,
-      productUrl: product.product_url,
-      availability: product.availability,
-      trackingStarted: product.tracking_started_at,
-    }));
+    console.log(
+      `📦 Database'den dönen (SADECE ZARA) ürün sayısı: ${trackedProducts.length}`
+    );
 
-    console.log(`🎯 Frontend'e gönderilen ürün sayısı: ${formattedProducts.length}`);
-    console.log(`🎯 Frontend'e gönderilen ID'ler:`, formattedProducts.map(p => p.id));
+    const formattedProducts = trackedProducts.map((product) => {
+      return {
+        id: product.product_id,
+        imgSrc: product.image_url
+          ? `/api/image-proxy?url=${encodeURIComponent(product.image_url)}`
+          : "Images/zara.png",
+        brandLogoSrc: "Images/zara.png",
+        title: product.name,
+        brand: "Zara",
+        discountStatus: product.is_on_sale ? "İNDİRİMDE!" : "TAKİP EDİLİYOR",
+        addedPrice: `${(product.price / 100).toFixed(2)} TL`,
+        originalPrice: product.price,
+        salePrice: product.sale_price,
+        productUrl: product.product_url,
+        availability: product.availability,
+        trackingStarted: product.tracking_started_at,
+      };
+    });
+
+    console.log(
+      `Frontend'e gönderilen (SADECE ZARA) ürün sayısı: ${formattedProducts.length}`
+    );
+    console.log(
+      `Frontend'e gönderilen ID'ler:`,
+      formattedProducts.map((p) => p.id)
+    );
 
     res.json({
       success: true,
       products: formattedProducts,
     });
   } catch (error) {
-    console.error("Takip edilen ürünler alınırken hata:", error);
-    res.status(500).json({
-      success: false,
-      message: "Takip edilen ürünler yüklenirken bir hata oluştu",
-    });
+    console.error("Takip edilen ZARA ürünleri alınırken hata:", error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        message: "Takip edilen ürünler yüklenirken bir hata oluştu",
+      });
+    }
   }
 });
 
@@ -266,6 +282,7 @@ router.get("/scheduler/status", async (req, res) => {
 });
 
 router.post("/track", csrfProtection, authenticate, async (req, res) => {
+  console.log("🔥🔥🔥 PRODUCTS TRACK ENDPOINT CALLED 🔥🔥🔥");
   try {
     const { productUrl } = req.body;
     const userId = req.user.id;
@@ -277,74 +294,15 @@ router.post("/track", csrfProtection, authenticate, async (req, res) => {
       });
     }
 
-    const productInfo = extractZaraProductInfo(productUrl);
+    const trackingService = require("../services/tracking.service");
+    const result = await trackingService.trackProductByUrl(userId, productUrl);
 
-    if (!productInfo) {
-      return res.status(400).json({
-        success: false,
-        message: "Geçersiz Zara URL'si",
-      });
-    }
-
-    const existingProduct = await zaraService.getProductById(
-      productInfo.productId
-    );
-
-    if (!existingProduct) {
-      return res.status(404).json({
-        success: false,
-        message:
-          "Bu ürün henüz sistemimizde bulunmuyor. Lütfen daha sonra tekrar deneyin.",
-      });
-    }
-
-    const db = require("../config/database");
-
-    const existingTracking = await new Promise((resolve, reject) => {
-      db.get(
-        "SELECT * FROM user_tracked_products WHERE user_id = ? AND product_id = ? AND brand = ?",
-        [userId, productInfo.productId, "zara"],
-        (err, row) => {
-          if (err) reject(err);
-          else resolve(row);
-        }
-      );
-    });
-
-    if (existingTracking) {
-      return res.status(400).json({
-        success: false,
-        message: "Bu ürünü zaten takip ediyorsunuz",
-      });
-    }
-
-    await new Promise((resolve, reject) => {
-      db.run(
-        "INSERT INTO user_tracked_products (user_id, product_id, brand) VALUES (?, ?, ?)",
-        [userId, productInfo.productId, "zara"],
-        (err) => {
-          if (err) reject(err);
-          else resolve();
-        }
-      );
-    });
-
-    res.json({
-      success: true,
-      message: "Ürün takip listesine eklendi",
-      product: {
-        id: existingProduct.product_id,
-        title: existingProduct.name,
-        price: `${(existingProduct.price / 100).toFixed(2)} TL`,
-        imageUrl: existingProduct.image_url,
-        productUrl: existingProduct.product_url,
-      },
-    });
+    return res.json(result);
   } catch (error) {
-    console.error("Ürün takip ederken hata:", error);
+    console.error("Error tracking product:", error);
     res.status(500).json({
       success: false,
-      message: "Ürün takip edilirken bir hata oluştu",
+      message: error.message || "Failed to track product",
     });
   }
 });
@@ -359,16 +317,8 @@ router.delete(
       const userId = req.user.id;
       const db = require("../config/database");
 
-      await new Promise((resolve, reject) => {
-        db.run(
-          "DELETE FROM user_tracked_products WHERE user_id = ? AND product_id = ? AND brand = ?",
-          [userId, productId, "zara"],
-          (err) => {
-            if (err) reject(err);
-            else resolve();
-          }
-        );
-      });
+      const trackingService = require("../services/tracking.service");
+      await trackingService.removeProductTracking(userId, productId);
 
       res.json({
         success: true,
@@ -417,7 +367,6 @@ router.post("/zara/fetch-all", csrfProtection, async (req, res) => {
 router.get("/zara/categories", async (req, res) => {
   try {
     const categories = await zaraService.getCategoriesFromDatabase();
-
 
     const groupedCategories = {};
     categories.forEach((cat) => {

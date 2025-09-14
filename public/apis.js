@@ -37,7 +37,7 @@ export async function fetchProducts(filters = {}) {
     if (filters.availability)
       params.append("availability", filters.availability);
 
-    const url = `/api/products${
+    const url = `/api/simple/products${
       params.toString() ? "?" + params.toString() : ""
     }`;
 
@@ -93,7 +93,7 @@ export async function fetchProductById(productId) {
 
 export async function fetchProductStats() {
   try {
-    const response = await fetch("/api/products/stats/summary", {
+    const response = await fetch("/api/simple/stats", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -170,7 +170,9 @@ export async function trackProduct(productUrl) {
   try {
     console.log("➕ Ürün takip ediliyor:", productUrl);
 
-    const response = await fetchWithCsrf("/api/products/track", "POST", {
+    const endpoint = "/api/simple/track";
+
+    const response = await fetchWithCsrf(endpoint, "POST", {
       productUrl: productUrl,
     });
 
@@ -183,7 +185,12 @@ export async function trackProduct(productUrl) {
 
     const data = await response.json();
 
-    console.log("✅ Ürün takip edildi:", data.product?.title);
+    console.log(
+      "✅ Ürün takip edildi:",
+      data.product?.title || data.product?.name
+    );
+    console.log("🔍 Full response data:", data);
+    console.log("🔍 Response success:", data.success);
 
     return data;
   } catch (error) {
@@ -197,11 +204,9 @@ export async function fetchTrackedProducts() {
     const timestamp = new Date().toISOString();
     console.log(`📋 [${timestamp}] fetchTrackedProducts ÇAĞRILIYOR`);
 
-    const response = await fetch("/api/products/tracked", {
+    const response = await fetch("/api/simple/tracked", {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
     });
 
     if (!response.ok) {
@@ -210,10 +215,23 @@ export async function fetchTrackedProducts() {
 
     const data = await response.json();
 
-    console.log(`✅ [${timestamp}] API Response:`, data.products?.length, "ürün");
-    console.log(`🔍 [${timestamp}] API'den gelen ID'ler:`, data.products?.map(p => p.id));
+    console.log(`📦 Unified API Response:`, data);
+    console.log(
+      `📦 Toplam ürün sayısı: ${data.products ? data.products.length : 0}`
+    );
 
-    return data;
+    const allProducts = data.products || [];
+
+    console.log(`✅ [${timestamp}] Unified API'den gelen ürünler hazır`);
+    console.log(`📦 İlk ürün örneği:`, allProducts[0]);
+
+    console.log(`✅ [${timestamp}] API Response:`, allProducts.length, "ürün");
+    console.log(
+      `🔍 [${timestamp}] API'den gelen ID'ler:`,
+      allProducts.map((p) => p.id)
+    );
+
+    return { success: true, products: allProducts };
   } catch (error) {
     console.error("Takip edilen ürünler çekilirken hata:", error);
     throw error;
@@ -225,7 +243,7 @@ export async function untrackProduct(productId) {
     console.log("➖ Ürün takipten çıkarılıyor:", productId);
 
     const response = await fetchWithCsrf(
-      `/api/products/untrack/${productId}`,
+      `/api/simple/untrack/${productId}`,
       "DELETE",
       {}
     );
@@ -244,6 +262,37 @@ export async function untrackProduct(productId) {
     return data;
   } catch (error) {
     console.error("Ürün takipten çıkarılırken hata:", error);
+    throw error;
+  }
+}
+
+export async function untrackBershkaProduct(uniqueId) {
+  try {
+    console.log(
+      "➖ Bershka ürünü takipten çıkarılıyor (unified endpoint):",
+      uniqueId
+    );
+
+    const response = await fetchWithCsrf(
+      `/api/simple/untrack/${uniqueId}`,
+      "DELETE",
+      {}
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(
+        errorData.message || `HTTP error! status: ${response.status}`
+      );
+    }
+
+    const data = await response.json();
+
+    console.log("✅ Bershka ürünü takipten çıkarıldı");
+
+    return data;
+  } catch (error) {
+    console.error("Bershka ürünü takipten çıkarılırken hata:", error);
     throw error;
   }
 }

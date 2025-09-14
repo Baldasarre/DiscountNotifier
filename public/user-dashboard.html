@@ -10,8 +10,6 @@
   </head>
   <body>
     <div id="userPageLogo"><img id="logoItSelf" src="Images/Logo1.png" alt="" /></div>
-    
-    <!-- Menu System -->
     <div id="menuContainer">
       <button id="menuButton">
         ☰ Menü
@@ -31,7 +29,7 @@
         <button id="followPageTab" class="tabButton">Marka Takibi</button>
       </div>
     </div>
-    <form id="form">
+    <form id="form" onsubmit="return false;">
       <div id="buttonsDiv">
         <div id="linkBoxParrent">
           <div class="linkBox">
@@ -50,10 +48,11 @@
           </div>
           <div id="brandButtons">
             </div>
-          <div id="brandBoxInstruction2">
-            <h1 class="instruction">Takip ettiğin markalar indirim sayfalarına yeni ürünler eklediğinde bu ürünler aşağıda belirecek.</h1>
+          <div id="brandsItemsDisplay">
+            <div id="brandBoxInstruction2">
+            <h1 class="instruction">Takip ettiğin markalar indirim sayfalarına yeni ürünler eklediğinde ürünler burada belirecek.</h1>
           </div>
-          <div id="brandsItemsDisplay"></div>
+          </div>
         </div>
       </div>
     </form>

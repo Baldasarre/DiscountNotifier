@@ -1,13 +1,16 @@
 const cron = require("node-cron");
-const zaraService = require("./zara.service");
+const StradivariusService = require("./stradivarius.service");
 const config = require("../config/environment");
+
+const zaraService = require("./zara.service");
+const bershkaService = require("./bershka.service");
 
 class SchedulerService {
   constructor() {
     this.jobs = new Map();
     this.isInitialized = false;
     this.isDevelopment = config.NODE_ENV === "development";
-    this.dataFetchEnabled = false;
+    this.dataFetchEnabled = true;
   }
 
   async initialize() {
@@ -31,17 +34,76 @@ class SchedulerService {
   }
 
   async runInitialDataFetch() {
-    if (this.isDevelopment && !config.FORCE_INITIAL_FETCH) {
-      console.log("🔄 Development modunda otomatik veri çekme devre dışı");
-      console.log("💡 Manuel fetch için: POST /api/products/refresh");
-      return;
-    }
-
     console.log("📡 İlk veri çekme işlemi başlatılıyor...");
 
     try {
-      await zaraService.fetchAndSaveAllProducts();
-      console.log("✅ İlk veri çekme tamamlandı");
+      if (this.isDevelopment && !config.FORCE_INITIAL_FETCH) {
+        console.log("🟨 Development modunda Zara otomatik çekme devre dışı");
+        console.log(
+          "💡 Manuel Zara fetch için environment değişkeni: FORCE_INITIAL_FETCH=true"
+        );
+      } else {
+        console.log("🟨 Zara ürünleri çekiliyor...");
+        console.log("⚠️ Zara scraping henüz scheduler'a entegre edilmedi");
+      }
+
+      if (this.isDevelopment && !config.FORCE_STRADIVARIUS_INITIAL_FETCH) {
+        console.log(
+          "🟪 Development modunda Stradivarius otomatik çekme devre dışı"
+        );
+        console.log(
+          "💡 Manuel Stradivarius fetch için environment değişkeni: FORCE_STRADIVARIUS_INITIAL_FETCH=true"
+        );
+      } else {
+        console.log("🟪 Stradivarius ürünleri çekiliyor...");
+        const stradivariusInstance = new StradivariusService();
+        await stradivariusInstance.scrapeAll();
+        console.log("✅ Stradivarius veri çekme işlemi tamamlandı");
+      }
+
+      if (config.FORCE_BERSHKA_CATEGORY_FETCH) {
+        console.log("🟩 Bershka kategorileri çekiliyor...");
+        const BershkaService = require("./bershka.service");
+        const bershkaInstance = new BershkaService();
+
+        try {
+          if (config.ENABLE_BERSHKA_CURL_FETCH) {
+            console.log(
+              "🔄 CURL ile fresh data çekiliyor ve kategoriler işleniyor..."
+            );
+            await bershkaInstance.fetchFreshDataWithCurl();
+          } else {
+            console.log("📁 Mevcut test data kullanılıyor...");
+            await bershkaInstance.fetchCategoriesFromTestData();
+          }
+        } catch (curlError) {
+          console.log("⚠️ CURL başarısız, mevcut data kullanılıyor...");
+          await bershkaInstance.fetchCategoriesFromTestData();
+        }
+
+        console.log("✅ Bershka kategori çekme işlemi tamamlandı");
+      } else {
+        console.log("🟩 Development modunda Bershka kategori çekme devre dışı");
+        console.log(
+          "💡 Manuel Bershka kategori fetch için environment değişkeni: FORCE_BERSHKA_CATEGORY_FETCH=true"
+        );
+        console.log(
+          "💡 CURL ile fresh data için: ENABLE_BERSHKA_CURL_FETCH=true"
+        );
+      }
+
+      if (this.isDevelopment && !config.FORCE_BERSHKA_INITIAL_FETCH) {
+        console.log("🟩 Development modunda Bershka otomatik çekme devre dışı");
+        console.log(
+          "💡 Manuel Bershka fetch için environment değişkeni: FORCE_BERSHKA_INITIAL_FETCH=true"
+        );
+      } else {
+        console.log("🟩 Bershka ürünleri çekiliyor...");
+        const BershkaService = require("./bershka.service");
+        const bershkaInstance = new BershkaService();
+        await bershkaInstance.fetchAllCategoriesProducts();
+        console.log("✅ Bershka veri çekme işlemi tamamlandı");
+      }
     } catch (error) {
       console.error("❌ İlk veri çekme işleminde hata:", error);
     }
@@ -59,7 +121,7 @@ class SchedulerService {
       async () => {
         if (this.dataFetchEnabled) {
           console.log("🔄 Periyodik veri çekme başlatılıyor...");
-          await this.performDataUpdate();
+          await this.runInitialDataFetch();
         } else {
           console.log(
             "🔌 Veri çekme anahtarı kapalı - periyodik çekme atlanıyor"

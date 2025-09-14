@@ -26,12 +26,31 @@ export function renderBrandButtons(container) {
 }
 
 export function createProductCardHTML(product) {
-  const priceText = product.addedPrice || product.price || "Fiyat bilgisi yok";
-  const brandLogo = product.brandLogoSrc || `Images/zara.png`;
-  const imgSrc = product.imgSrc || product.imageUrl || "Images/zara.png";
+  const priceText =
+    product.formattedPrice ||
+    product.addedPrice ||
+    product.price ||
+    "Fiyat bilgisi yok";
+  const brandLogo =
+    product.brandLogoSrc || `Images/${product.brand || "zara"}.png`;
+
+  let imgSrc =
+    product.imageUrl ||
+    product.imgSrc ||
+    `Images/${product.brand || "zara"}.png`;
+
+  if (product.brand === "Bershka") {
+    console.log(`🔍 Bershka ürünü: ${product.id}`, {
+      productUrl: product.productUrl,
+      hasProductUrl: !!product.productUrl,
+      brand: product.brand,
+    });
+  }
 
   return `
-      <div class="addedItemBox" data-id="${product.id}">
+      <div class="addedItemBox" data-id="${product.id}" data-product-id="${
+    product.id
+  }">
         <img class="itemImg" src="${imgSrc}" alt="${product.title}" />
         <div class="addedItemButtonsAndInfoBox">
           <div class="addedItemInfoBox">
@@ -59,26 +78,29 @@ export function renderProductCards(container, products) {
 
   if (!products || products.length === 0) {
     container.innerHTML = `
-      <div style="text-align: center; padding: 40px; color: #666;">
+      <div style="width: 40rem;position: relative;text-align: center;padding: 40px;color: #666;left: 50%;">
         <h3>Henüz takip ettiğin ürün yok</h3>
-        <p>Yukarıdaki alana bir Zara ürün linkini yapıştırarak takip etmeye başlayabilirsin.</p>
+        <p>Yukarıdaki alana bir ürünün linkini yapıştırarak takip etmeye başlayabilirsin.</p>
       </div>
+      
     `;
     return;
   }
 
   console.log("🎨 Ürünler render ediliyor:", products.length, "ürün");
-  console.log("🔍 Ürün ID'leri:", products.map(p => p.id));
-  
+  console.log(
+    "🔍 Ürün ID'leri:",
+    products.map((p) => p.id)
+  );
 
-  const ids = products.map(p => p.id);
+  const ids = products.map((p) => p.id);
   const uniqueIds = [...new Set(ids)];
   if (ids.length !== uniqueIds.length) {
     console.warn("⚠️ DUPLICATE ÜRÜNLER BULUNDU!");
     console.log("Tüm ID'ler:", ids);
     console.log("Unique ID'ler:", uniqueIds);
   }
-  
+
   const allCardsHTML = products
     .map((product) => createProductCardHTML(product))
     .join("");

@@ -3,6 +3,9 @@ const db = require("../config/database");
 
 class ZaraService {
   constructor() {
+    this.debugMode = true;
+    this.brand = "zara";
+
     this.baseUrl = "https://www.zara.com/tr/tr";
     this.categoriesApiUrl =
       "https://www.zara.com/tr/tr/categories?categoryId=2527573&categorySeoId=2641&ajax=true";
@@ -17,6 +20,13 @@ class ZaraService {
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
     this.lastRequestTime = 0;
     this.minRequestInterval = 5000;
+
+    // 🐛 Debug initialization
+    if (this.debugMode) {
+      console.log(
+        `🔧 [ZARA-SERVICE] Initialized with unified DB structure for brand: ${this.brand}`
+      );
+    }
   }
 
   async fetchCategoriesFromAPI() {
@@ -458,18 +468,29 @@ class ZaraService {
   }
 
   async saveProductsToDatabase(products) {
-    if (!products || products.length === 0) return;
+    if (!products || products.length === 0) {
+      if (this.debugMode) {
+        console.log(
+          `🔧 [ZARA-SERVICE] saveProductsToDatabase: No products to save`
+        );
+      }
+      return;
+    }
 
-    console.log(`💾 ${products.length} ürün veritabanına kaydediliyor...`);
+    console.log(
+      `💾 [ZARA-SERVICE] ${products.length} ürün unified database'e kaydediliyor...`
+    );
 
+    if (this.debugMode) {
+      console.log(`🔧 [ZARA-SERVICE] First product sample:`, products[0]);
+    }
+
+    // 🔧 UNIFIED DB STRUCTURE: products_unified table
     const stmt = db.prepare(`
-            INSERT OR REPLACE INTO zara_products (
-                product_id, reference, display_reference, name, description, price,
-                section, section_name, category_id, category_name, brand_code, seo_keyword, seo_product_id,
-                main_color_hex, num_additional_colors, availability, image_url,
-                product_url, grid_position, family_name, subfamily_name,
-                is_on_sale, sale_price, last_updated
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT OR REPLACE INTO products_unified (
+                brand, product_id, name, price, sale_price, currency, 
+                image_url, product_url, availability, brand_data, last_updated
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
     db.serialize(() => {
@@ -477,48 +498,81 @@ class ZaraService {
 
       let processedCount = 0;
       products.forEach((product) => {
-        stmt.run([
-          product.product_id,
-          product.reference,
-          product.display_reference,
-          product.name,
-          product.description,
-          product.price,
-          product.section,
-          product.section_name,
-          product.category_id,
-          product.category_name,
-          product.brand_code,
-          product.seo_keyword,
-          product.seo_product_id,
-          product.main_color_hex,
-          product.num_additional_colors,
-          product.availability,
-          product.image_url,
-          product.product_url,
-          product.grid_position,
-          product.family_name,
-          product.subfamily_name,
-          0,
-          null,
-          product.last_updated,
-        ]);
-        processedCount++;
+        try {
+          const brandData = {
+            reference: product.reference,
+            display_reference: product.display_reference,
+            description: product.description,
+            section: product.section,
+            section_name: product.section_name,
+            category_id: product.category_id,
+            category_name: product.category_name,
+            brand_code: product.brand_code,
+            seo_keyword: product.seo_keyword,
+            seo_product_id: product.seo_product_id,
+            main_color_hex: product.main_color_hex,
+            num_additional_colors: product.num_additional_colors,
+            grid_position: product.grid_position,
+            family_name: product.family_name,
+            subfamily_name: product.subfamily_name,
+          };
 
-        if (processedCount % 100 === 0) {
-          console.log(
-            `📊 ${processedCount}/${products.length} ürün işlendi...`
+          stmt.run([
+            this.brand, // brand = 'zara'
+            product.product_id, // product_id
+            product.name, // name
+            product.price, // price (in cents)
+            product.sale_price || null, // sale_price (in cents)
+            "TL", // currency
+            product.image_url, // image_url
+            product.product_url, // product_url
+            product.availability || "unknown", // availability
+            JSON.stringify(brandData), // brand_data (JSON)
+            new Date().toISOString(), // last_updated
+          ]);
+
+          processedCount++;
+
+          if (processedCount % 100 === 0) {
+            console.log(
+              `📊 [ZARA-SERVICE] ${processedCount}/${products.length} ürün işlendi...`
+            );
+          }
+
+          if (this.debugMode && processedCount <= 3) {
+            console.log(
+              `🔧 [ZARA-SERVICE] Processed product ${processedCount}:`,
+              {
+                product_id: product.product_id,
+                name: product.name,
+                price: product.price,
+                brand_data_keys: Object.keys(brandData),
+              }
+            );
+          }
+        } catch (error) {
+          console.error(
+            `❌ [ZARA-SERVICE] Error processing product ${product.product_id}:`,
+            error
           );
         }
       });
 
       db.run("COMMIT", (err) => {
         if (err) {
-          console.error("❌ Ürünler kaydedilirken hata:", err);
+          console.error(
+            `❌ [ZARA-SERVICE] Ürünler unified DB'ye kaydedilirken hata:`,
+            err
+          );
         } else {
           console.log(
-            `✅ ${processedCount} ürün başarıyla veritabanına kaydedildi`
+            `✅ [ZARA-SERVICE] ${processedCount} ürün başarıyla products_unified tablosuna kaydedildi`
           );
+          if (this.debugMode) {
+            console.log(
+              `🔧 [ZARA-SERVICE] Transaction completed successfully for brand: ${this.brand}`
+            );
+          }
         }
       });
     });
@@ -528,29 +582,37 @@ class ZaraService {
 
   async getProductsFromDatabase(limit = 50, offset = 0, filters = {}) {
     return new Promise((resolve, reject) => {
+      if (this.debugMode) {
+        console.log(`🔧 [ZARA-SERVICE] getProductsFromDatabase called with:`, {
+          limit,
+          offset,
+          filters,
+        });
+      }
+
       let query = `
-                SELECT * FROM zara_products 
-                WHERE 1=1
+                SELECT * FROM products_unified 
+                WHERE brand = ?
             `;
-      const params = [];
+      const params = [this.brand];
 
       if (filters.gender) {
-        query += ` AND section_name = ?`;
+        query += ` AND JSON_EXTRACT(brand_data, '$.section_name') = ?`;
         params.push(filters.gender.toUpperCase());
       }
 
       if (filters.category_id) {
-        query += ` AND category_id = ?`;
+        query += ` AND JSON_EXTRACT(brand_data, '$.category_id') = ?`;
         params.push(filters.category_id);
       }
 
       if (filters.category_name) {
-        query += ` AND category_name LIKE ?`;
+        query += ` AND JSON_EXTRACT(brand_data, '$.category_name') LIKE ?`;
         params.push(`%${filters.category_name}%`);
       }
 
       if (filters.search) {
-        query += ` AND (name LIKE ? OR description LIKE ?)`;
+        query += ` AND (name LIKE ? OR JSON_EXTRACT(brand_data, '$.description') LIKE ?)`;
         params.push(`%${filters.search}%`, `%${filters.search}%`);
       }
 
@@ -562,10 +624,35 @@ class ZaraService {
       query += ` ORDER BY last_updated DESC LIMIT ? OFFSET ?`;
       params.push(limit, offset);
 
+      if (this.debugMode) {
+        console.log(`🔧 [ZARA-SERVICE] Executing query:`, query);
+        console.log(`🔧 [ZARA-SERVICE] Query params:`, params);
+      }
+
       db.all(query, params, (err, rows) => {
         if (err) {
+          console.error(
+            `❌ [ZARA-SERVICE] getProductsFromDatabase error:`,
+            err
+          );
           reject(err);
         } else {
+          if (this.debugMode) {
+            console.log(
+              `🔧 [ZARA-SERVICE] Retrieved ${rows.length} products from unified DB`
+            );
+            if (rows.length > 0) {
+              console.log(`🔧 [ZARA-SERVICE] First product sample:`, {
+                id: rows[0].id,
+                product_id: rows[0].product_id,
+                name: rows[0].name,
+                brand: rows[0].brand,
+                brand_data_keys: rows[0].brand_data
+                  ? Object.keys(JSON.parse(rows[0].brand_data))
+                  : [],
+              });
+            }
+          }
           resolve(rows);
         }
       });
@@ -596,14 +683,42 @@ class ZaraService {
 
   async getProductById(productId) {
     return new Promise((resolve, reject) => {
-      db.get(
-        "SELECT * FROM zara_products WHERE product_id = ?",
-        [productId],
-        (err, row) => {
-          if (err) reject(err);
-          else resolve(row);
+      if (this.debugMode) {
+        console.log(
+          `🔧 [ZARA-SERVICE] getProductById called with productId: ${productId}`
+        );
+      }
+
+      const query =
+        "SELECT * FROM products_unified WHERE brand = ? AND product_id = ?";
+      const params = [this.brand, productId];
+
+      if (this.debugMode) {
+        console.log(`🔧 [ZARA-SERVICE] Query:`, query);
+        console.log(`🔧 [ZARA-SERVICE] Params:`, params);
+      }
+
+      db.get(query, params, (err, row) => {
+        if (err) {
+          console.error(`❌ [ZARA-SERVICE] getProductById error:`, err);
+          reject(err);
+        } else {
+          if (this.debugMode) {
+            console.log(
+              `🔧 [ZARA-SERVICE] getProductById result:`,
+              row
+                ? {
+                    id: row.id,
+                    product_id: row.product_id,
+                    name: row.name,
+                    brand: row.brand,
+                  }
+                : "No product found"
+            );
+          }
+          resolve(row);
         }
-      );
+      });
     });
   }
 
@@ -671,11 +786,26 @@ class ZaraService {
 
   async getCurrentProductCount() {
     return new Promise((resolve, reject) => {
-      db.get("SELECT COUNT(*) as count FROM zara_products", (err, row) => {
+      if (this.debugMode) {
+        console.log(`🔧 [ZARA-SERVICE] getCurrentProductCount called`);
+      }
+
+      const query =
+        "SELECT COUNT(*) as count FROM products_unified WHERE brand = ?";
+      const params = [this.brand];
+
+      db.get(query, params, (err, row) => {
         if (err) {
+          console.error(`❌ [ZARA-SERVICE] getCurrentProductCount error:`, err);
           reject(err);
         } else {
-          resolve(row.count || 0);
+          const count = row.count || 0;
+          if (this.debugMode) {
+            console.log(
+              `🔧 [ZARA-SERVICE] Current ${this.brand} product count: ${count}`
+            );
+          }
+          resolve(count);
         }
       });
     });
