@@ -429,7 +429,7 @@ class BershkaService {
 
     const firstSize = firstColor.sizes[0];
     if (firstSize.price) {
-      return Math.round(parseInt(firstSize.price) / 100);
+      return Math.round(parseInt(firstSize.price));
     }
     return null;
   }
@@ -440,7 +440,7 @@ class BershkaService {
     if (color.sizes && color.sizes.length > 0) {
       const firstSize = color.sizes[0];
       if (firstSize.price) {
-        return Math.round(parseInt(firstSize.price) / 100);
+        return Math.round(parseInt(firstSize.price));
       }
     }
 

@@ -8,6 +8,240 @@ class TrackingService {
   }
 
   /**
+   * Helper function to handle Bershka product matching with color support
+   * @param {string} productId - Extracted product ID from URL
+   * @param {string} colorId - Extracted color ID from URL (optional)
+   * @returns {Promise<Object>} Product matching result
+   */
+  async handleBershkaProductMatching(productId, colorId = null) {
+    console.log(`🔧 [BERSHKA] handleBershkaProductMatching - productId: ${productId}, colorId: ${colorId}`);
+
+    return new Promise((resolve, reject) => {
+      // First, try to find the product with the main product ID
+      const query = "SELECT * FROM bershka_unique_product_details WHERE product_id = ?";
+
+      db.get(query, [productId], async (err, baseProduct) => {
+        if (err) {
+          console.error(`❌ [BERSHKA] Database error:`, err);
+          return reject(err);
+        }
+
+        if (!baseProduct) {
+          console.log(`❌ [BERSHKA] No product found with ID: ${productId}`);
+          return resolve({
+            success: false,
+            message: `Product with ID ${productId} not found in database`,
+            productId: null
+          });
+        }
+
+        console.log(`✅ [BERSHKA] Found base product: ${baseProduct.name}, color_id: ${baseProduct.color_id}`);
+
+        // If no colorId in URL, return the base product
+        if (!colorId) {
+          console.log(`✅ [BERSHKA] No color specified, using base product`);
+          return resolve({
+            success: true,
+            product: baseProduct,
+            productId: baseProduct.product_id
+          });
+        }
+
+        // If colorId matches the base product's color_id, return base product
+        if (baseProduct.color_id === colorId) {
+          console.log(`✅ [BERSHKA] Color matches base product (${colorId})`);
+          return resolve({
+            success: true,
+            product: baseProduct,
+            productId: baseProduct.product_id
+          });
+        }
+
+        // Color doesn't match, check catentryIds for the requested color
+        console.log(`🔍 [BERSHKA] Color mismatch (${colorId} vs ${baseProduct.color_id}), checking catentryIds...`);
+
+        if (!baseProduct.catentryIds) {
+          console.log(`❌ [BERSHKA] No catentryIds found for product ${productId}`);
+          return resolve({
+            success: false,
+            message: `Color ${colorId} not available for this product`,
+            productId: null
+          });
+        }
+
+        let catentryIds;
+        try {
+          catentryIds = typeof baseProduct.catentryIds === 'string'
+            ? JSON.parse(baseProduct.catentryIds)
+            : baseProduct.catentryIds;
+        } catch (parseError) {
+          console.error(`❌ [BERSHKA] Failed to parse catentryIds:`, parseError);
+          return resolve({
+            success: false,
+            message: `Invalid catentryIds data for product ${productId}`,
+            productId: null
+          });
+        }
+
+        console.log(`🔍 [BERSHKA] Searching in catentryIds:`, catentryIds);
+
+        // Find the color in catentryIds
+        const colorEntry = catentryIds.find(entry => entry.id === colorId);
+
+        if (!colorEntry) {
+          console.log(`❌ [BERSHKA] Color ${colorId} not found in catentryIds`);
+          return resolve({
+            success: false,
+            message: `Color ${colorId} not available for this product`,
+            productId: null
+          });
+        }
+
+        console.log(`✅ [BERSHKA] Found color entry:`, colorEntry);
+
+        // Now find the product with the catentryId
+        const colorProductQuery = "SELECT * FROM bershka_unique_product_details WHERE product_id = ?";
+
+        db.get(colorProductQuery, [colorEntry.catentryId], (err, colorProduct) => {
+          if (err) {
+            console.error(`❌ [BERSHKA] Error finding color product:`, err);
+            return reject(err);
+          }
+
+          if (!colorProduct) {
+            console.log(`❌ [BERSHKA] Color product not found with catentryId: ${colorEntry.catentryId}`);
+            return resolve({
+              success: false,
+              message: `Color variant product not found in database`,
+              productId: null
+            });
+          }
+
+          console.log(`✅ [BERSHKA] Found color product: ${colorProduct.name}, ID: ${colorProduct.product_id}`);
+
+          resolve({
+            success: true,
+            product: colorProduct,
+            productId: colorProduct.product_id
+          });
+        });
+      });
+    });
+  }
+
+  /**
+   * Helper function to handle Bershka reference code lookup
+   * @param {string} refCode - Reference code in format XXXX/XXX/XXX
+   * @returns {Promise<Object>} Product lookup result
+   */
+  async handleBershkaRefCode(refCode) {
+    console.log(`🔧 [BERSHKA] handleBershkaRefCode - refCode: ${refCode}`);
+
+    return new Promise((resolve, reject) => {
+      const query = "SELECT * FROM bershka_unique_product_details WHERE reference = ?";
+
+      db.get(query, [refCode], (err, product) => {
+        if (err) {
+          console.error(`❌ [BERSHKA] Database error for ref code:`, err);
+          return reject(err);
+        }
+
+        if (!product) {
+          console.log(`❌ [BERSHKA] No product found with reference: ${refCode}`);
+          return resolve({
+            success: false,
+            message: `Product with reference ${refCode} not found`,
+            productId: null
+          });
+        }
+
+        console.log(`✅ [BERSHKA] Found product by reference: ${product.name}, ID: ${product.product_id}`);
+
+        resolve({
+          success: true,
+          product: product,
+          productId: product.product_id
+        });
+      });
+    });
+  }
+
+  /**
+   * Helper function to handle Stradivarius product lookup by product ID
+   * @param {string} productId - Product ID extracted from pelement parameter
+   * @returns {Promise<Object>} Product lookup result
+   */
+  async handleStradivariusProductLookup(productId) {
+    console.log(`🔧 [STRADIVARIUS] handleStradivariusProductLookup - productId: ${productId}`);
+
+    return new Promise((resolve, reject) => {
+      const query = "SELECT * FROM stradivarius_unique_product_details WHERE product_id = ?";
+
+      db.get(query, [productId], (err, product) => {
+        if (err) {
+          console.error(`❌ [STRADIVARIUS] Database error:`, err);
+          return reject(err);
+        }
+
+        if (!product) {
+          console.log(`❌ [STRADIVARIUS] No product found with ID: ${productId}`);
+          return resolve({
+            success: false,
+            message: `Product with ID ${productId} not found in database`,
+            productId: null
+          });
+        }
+
+        console.log(`✅ [STRADIVARIUS] Found product: ${product.name}, ID: ${product.product_id}`);
+
+        resolve({
+          success: true,
+          product: product,
+          productId: product.product_id
+        });
+      });
+    });
+  }
+
+  /**
+   * Helper function to handle Stradivarius reference code lookup (with LIMIT 1 for duplicates)
+   * @param {string} refCode - Reference code in format XXXX/XXX/XXX
+   * @returns {Promise<Object>} Product lookup result
+   */
+  async handleStradivariusRefCode(refCode) {
+    console.log(`🔧 [STRADIVARIUS] handleStradivariusRefCode - refCode: ${refCode}`);
+
+    return new Promise((resolve, reject) => {
+      // Use ORDER BY id ASC LIMIT 1 to get the first (oldest) record for duplicates
+      const query = "SELECT * FROM stradivarius_unique_product_details WHERE reference = ? ORDER BY id ASC LIMIT 1";
+
+      db.get(query, [refCode], (err, product) => {
+        if (err) {
+          console.error(`❌ [STRADIVARIUS] Database error for ref code:`, err);
+          return reject(err);
+        }
+
+        if (!product) {
+          console.log(`❌ [STRADIVARIUS] No product found with reference: ${refCode}`);
+          return resolve({
+            success: false,
+            message: `Product with reference ${refCode} not found`,
+            productId: null
+          });
+        }
+
+        console.log(`✅ [STRADIVARIUS] Found product by reference: ${product.name}, ID: ${product.product_id} (first match from duplicates)`);
+
+        resolve({
+          success: true,
+          product: product,
+          productId: product.product_id
+        });
+      });
+    });
+  }
+
+  /**
    * Add product to user's tracking list (using brand-specific tables)
    * @param {string} userId - User ID
    * @param {string} brand - Brand name
@@ -908,8 +1142,37 @@ class TrackingService {
 
     let brand, productId, colorId;
     let customSettings = {};
+    let actualProduct = null;
 
-    if (productUrl.includes("zara.com")) {
+    // Check if input is a reference code (format: XXXX/XXX/XXX)
+    const refCodePattern = /^\d{4}\/\d{3}\/\d{3}$/;
+
+    if (refCodePattern.test(productUrl.trim())) {
+      console.log(`🔧 [TRACKING] Input detected as reference code: ${productUrl}`);
+
+      // Try Bershka first, then Stradivarius
+      let refResult = await this.handleBershkaRefCode(productUrl.trim());
+
+      if (refResult.success) {
+        brand = "bershka";
+        actualProduct = refResult.product;
+        productId = refResult.productId;
+        console.log(`✅ [TRACKING] Found Bershka product via reference: ${actualProduct.name}`);
+      } else {
+        // Try Stradivarius
+        refResult = await this.handleStradivariusRefCode(productUrl.trim());
+
+        if (refResult.success) {
+          brand = "stradivarius";
+          actualProduct = refResult.product;
+          productId = refResult.productId;
+          console.log(`✅ [TRACKING] Found Stradivarius product via reference: ${actualProduct.name}`);
+        } else {
+          throw new Error(`Reference code ${productUrl.trim()} not found in Bershka or Stradivarius databases`);
+        }
+      }
+
+    } else if (productUrl.includes("zara.com")) {
       brand = "zara";
       const productIdMatch = productUrl.match(/v1=(\d+)/);
       if (productIdMatch) {
@@ -929,18 +1192,33 @@ class TrackingService {
       }
 
       if (bershkaMatch) {
-        productId = bershkaMatch[1];
-        console.log(`✅ [TRACKING] Extracted Bershka product ID: ${productId}`);
+        const extractedId = bershkaMatch[1];
+        console.log(`✅ [TRACKING] Extracted Bershka product ID: ${extractedId}`);
+
+        const colorMatch = productUrl.match(/colorId=(\d+)/);
+        const extractedColorId = colorMatch ? colorMatch[1] : null;
+
+        if (extractedColorId) {
+          console.log(`✅ [TRACKING] Extracted Bershka color ID: ${extractedColorId}`);
+        }
+
+        // Use new Bershka matching logic
+        const bershkaResult = await this.handleBershkaProductMatching(extractedId, extractedColorId);
+
+        if (!bershkaResult.success) {
+          throw new Error(bershkaResult.message);
+        }
+
+        actualProduct = bershkaResult.product;
+        productId = bershkaResult.productId;
+        colorId = extractedColorId; // Keep the original colorId for customSettings
+
+        console.log(`✅ [TRACKING] Matched Bershka product: ${actualProduct.name}, final ID: ${productId}`);
       } else {
         console.log(
           `❌ [TRACKING] Could not extract Bershka product ID from URL: ${productUrl}`
         );
-      }
-
-      const colorMatch = productUrl.match(/colorId=(\d+)/);
-      if (colorMatch) {
-        colorId = colorMatch[1];
-        console.log(`✅ [TRACKING] Extracted Bershka color ID: ${colorId}`);
+        throw new Error("Could not extract Bershka product ID from URL");
       }
     } else if (productUrl.includes("stradivarius.com")) {
       brand = "stradivarius";
@@ -948,17 +1226,41 @@ class TrackingService {
 
       const pelementMatch = productUrl.match(/pelement=(\d+)/);
       if (pelementMatch) {
-        productId = pelementMatch[1];
+        const extractedId = pelementMatch[1];
         console.log(
-          `✅ [TRACKING] Extracted Stradivarius product ID from pelement (PREFERRED): ${productId}`
+          `✅ [TRACKING] Extracted Stradivarius product ID from pelement: ${extractedId}`
         );
+
+        // Use new Stradivarius lookup logic
+        const stradResult = await this.handleStradivariusProductLookup(extractedId);
+
+        if (!stradResult.success) {
+          throw new Error(stradResult.message);
+        }
+
+        actualProduct = stradResult.product;
+        productId = stradResult.productId;
+
+        console.log(`✅ [TRACKING] Found Stradivarius product: ${actualProduct.name}, ID: ${productId}`);
       } else {
         const directProductMatch = productUrl.match(/\/product\/(\d+)/);
         if (directProductMatch) {
-          productId = directProductMatch[1];
+          const extractedId = directProductMatch[1];
           console.log(
-            `✅ [TRACKING] Extracted Stradivarius product ID from direct product URL: ${productId}`
+            `✅ [TRACKING] Extracted Stradivarius product ID from direct product URL: ${extractedId}`
           );
+
+          // Use new Stradivarius lookup logic
+          const stradResult = await this.handleStradivariusProductLookup(extractedId);
+
+          if (!stradResult.success) {
+            throw new Error(stradResult.message);
+          }
+
+          actualProduct = stradResult.product;
+          productId = stradResult.productId;
+
+          console.log(`✅ [TRACKING] Found Stradivarius product: ${actualProduct.name}, ID: ${productId}`);
         } else {
           console.log(
             `❌ [TRACKING] Could not extract Stradivarius product ID - no pelement or product ID found in URL: ${productUrl}`
@@ -966,9 +1268,11 @@ class TrackingService {
           console.log(
             `💡 [TRACKING] Stradivarius URLs must contain either pelement=ID or /product/ID parameter`
           );
+          throw new Error("Could not extract Stradivarius product ID from URL");
         }
       }
 
+      // Extract colorId for customSettings (info only, no matching needed)
       const stradColorMatch = productUrl.match(/colorId=(\d+)/);
       if (stradColorMatch) {
         colorId = stradColorMatch[1];
@@ -977,6 +1281,7 @@ class TrackingService {
         );
       }
 
+      // Extract product code if present
       const productCodeMatch = productUrl.match(/-l(\d+)/);
       if (productCodeMatch) {
         const productCode = productCodeMatch[1];
@@ -1006,38 +1311,65 @@ class TrackingService {
       throw new Error("Could not extract product ID from URL");
     }
 
-    const productService = require("./product.service");
-    console.log(
-      `🔧 [TRACKING] Checking if product exists: productId=${productId}, brand=${brand}`
-    );
+    let product;
 
-    let product = await productService.getProductById(productId, brand);
+    // If we already found the actual product (for Bershka ref codes or URL matching), use it
+    if (actualProduct) {
+      console.log(`✅ [TRACKING] Using already matched product: ${actualProduct.name}`);
+      console.log(`🔧 [TRACKING] Raw actualProduct data:`, {
+        id: actualProduct.product_id,
+        name: actualProduct.name,
+        price: actualProduct.price,
+        image_url: actualProduct.image_url?.substring(0, 100) + '...',
+        reference: actualProduct.reference,
+        brand: brand
+      });
 
-    if (!product) {
+      const productService = require("./product.service");
+      product = productService.formatProduct(actualProduct);
+
+      console.log(`🔧 [TRACKING] Formatted product data:`, {
+        id: product.id,
+        title: product.title,
+        formattedPrice: product.formattedPrice,
+        imgSrc: product.imgSrc?.substring(0, 100) + '...',
+        imageUrl: product.imageUrl?.substring(0, 100) + '...'
+      });
+    } else {
+      // For Zara and Stradivarius, use the old method
+      const productService = require("./product.service");
       console.log(
-        `⚠️ [TRACKING] Product ${productId} (${brand}) not found in database, creating placeholder for tracking`
+        `🔧 [TRACKING] Checking if product exists: productId=${productId}, brand=${brand}`
       );
 
-      const placeholderData = {
-        id: null,
-        brand: brand,
-        product_id: productId,
-        name: `${
-          brand.charAt(0).toUpperCase() + brand.slice(1)
-        } Product (Loading...)`,
-        price: null,
-        sale_price: null,
-        currency: "TL",
-        image_url: `/Images/${brand}.png`,
-        product_url: productUrl,
-        availability: "unknown",
-        brand_data: {},
-        last_updated: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-      };
+      product = await productService.getProductById(productId, brand);
 
-      product = productService.formatProduct(placeholderData);
-      product.isPlaceholder = true;
+      if (!product) {
+        console.log(
+          `⚠️ [TRACKING] Product ${productId} (${brand}) not found in database, creating placeholder for tracking`
+        );
+
+        const placeholderData = {
+          id: null,
+          brand: brand,
+          product_id: productId,
+          name: `${
+            brand.charAt(0).toUpperCase() + brand.slice(1)
+          } Product (Loading...)`,
+          price: null,
+          sale_price: null,
+          currency: "TL",
+          image_url: `/Images/${brand}.png`,
+          product_url: productUrl,
+          availability: "unknown",
+          brand_data: {},
+          last_updated: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+        };
+
+        product = productService.formatProduct(placeholderData);
+        product.isPlaceholder = true;
+      }
     }
 
     customSettings.originalUrl = productUrl;
@@ -1082,11 +1414,21 @@ class TrackingService {
       `🔧 [TRACKING] Formatted product imageUrl: ${formattedProduct.imageUrl}`
     );
 
-    return {
+    const finalResult = {
       ...result,
       product: formattedProduct,
       trackingUrl: productUrl,
     };
+
+    console.log(`🎯 [TRACKING] Final result being returned:`, {
+      success: finalResult.success,
+      productId: finalResult.product?.id,
+      productName: finalResult.product?.title,
+      productPrice: finalResult.product?.formattedPrice,
+      trackingUrl: finalResult.trackingUrl
+    });
+
+    return finalResult;
   }
 
   /**
@@ -1111,6 +1453,7 @@ class TrackingService {
       console.log(
         `🔧 [TRACKING] Finding tracking record - userId: ${userId}, productId: ${productId}`
       );
+      console.log(`🔧 [TRACKING] Query:`, findQuery);
 
       db.get(findQuery, [userId, productId], (err, record) => {
         if (err) {
@@ -1122,12 +1465,30 @@ class TrackingService {
           console.log(
             `⚠️ [TRACKING] No tracking record found - userId: ${userId}, productId: ${productId}`
           );
+
+          // Let's also check what records exist for this user
+          db.all(
+            "SELECT utp.id, p.product_id, p.brand, p.name FROM user_tracked_products_unified utp JOIN products_unified p ON utp.product_id = p.id WHERE utp.user_id = ?",
+            [userId],
+            (err, allRecords) => {
+              if (!err) {
+                console.log(`🔍 [TRACKING] All tracking records for user ${userId}:`, allRecords);
+              }
+            }
+          );
+
           return resolve({
             success: false,
             message: "Product was not being tracked",
             removed: false,
           });
         }
+
+        console.log(`✅ [TRACKING] Found tracking record:`, {
+          id: record.id,
+          brand: record.brand,
+          productId: record.product_id
+        });
 
         const deleteQuery =
           "DELETE FROM user_tracked_products_unified WHERE id = ?";

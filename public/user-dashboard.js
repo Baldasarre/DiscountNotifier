@@ -9,7 +9,6 @@ import {
   fetchTrackedProducts,
   trackProduct,
   untrackProduct,
-  untrackBershkaProduct,
 } from "./apis.js";
 import {
   DELAYS,
@@ -396,20 +395,29 @@ async function handleAddProduct() {
   const productUrl = linkInput.value.trim();
 
   if (!productUrl) {
-    showToast("Lütfen bir ürün linki girin.", "error");
+    showToast("Lütfen bir ürün linki veya referans kodu girin.", "error");
     return;
   }
 
-  if (
-    !productUrl.includes("zara.com") &&
-    !productUrl.includes("bershka.com") &&
-    !productUrl.includes("stradivarius.com")
-  ) {
-    showToast(
-      "Sadece Zara, Bershka ve Stradivarius ürün linkleri desteklenmektedir.",
-      "error"
-    );
-    return;
+  // Check if input is a reference code (format: XXXX/XXX/XXX)
+  const refCodePattern = /^\d{4}\/\d{3}\/\d{3}$/;
+  const isRefCode = refCodePattern.test(productUrl);
+
+  if (!isRefCode) {
+    // If not a ref code, check if it's a valid URL
+    if (
+      !productUrl.includes("zara.com") &&
+      !productUrl.includes("bershka.com") &&
+      !productUrl.includes("stradivarius.com")
+    ) {
+      showToast(
+        "Lütfen ürün linki veya referans kodu (örn: 6636/407/802) girin.",
+        "error"
+      );
+      return;
+    }
+  } else {
+    console.log(`✅ Reference code detected: ${productUrl}`);
   }
 
   addButton.disabled = true;
@@ -418,6 +426,7 @@ async function handleAddProduct() {
 
   try {
     console.log("🔄 Ürün ekleniyor:", productUrl);
+    console.log("🔄 Ref code pattern test:", /^\d{4}\/\d{3}\/\d{3}$/.test(productUrl));
 
     const response = await trackProduct(productUrl);
 
@@ -425,6 +434,9 @@ async function handleAddProduct() {
       console.log("✅ Ürün başarıyla eklendi:", response);
       console.log("🔍 Product detayları:", response.product);
       console.log("🔍 Product keys:", Object.keys(response.product || {}));
+      console.log("🔍 Product name:", response.product?.title || response.product?.name);
+      console.log("🔍 Product price:", response.product?.addedPrice || response.product?.formattedPrice);
+      console.log("🔍 Product image:", response.product?.imgSrc || response.product?.imageUrl);
 
       linkInput.value = "";
 
@@ -600,14 +612,15 @@ function removeConfirmationToast(toastId) {
 async function handleRemoveProduct(productId) {
   try {
     const product = currentProducts.find((p) => p.id === productId);
-    const isBershka = product && product.brand === "Bershka";
+    console.log(`🗑️ Removing product:`, {
+      id: productId,
+      brand: product?.brand,
+      title: product?.title
+    });
 
-    let response;
-    if (isBershka) {
-      response = await untrackBershkaProduct(productId);
-    } else {
-      response = await untrackProduct(productId);
-    }
+    // Since we use unified tracking system, all brands use the same untrack endpoint
+    const response = await untrackProduct(productId);
+    console.log(`✅ Untrack response:`, response);
 
     if (response.success) {
       showToast("Ürün takip listesinden kaldırıldı.", "success");
