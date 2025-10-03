@@ -3,7 +3,7 @@ const productService = require("./product.service");
 
 class TrackingService {
   constructor() {
-    this.maxTrackedPerUser = 12;
+    this.maxTrackedPerUser = 9;
     this.supportedBrands = ["zara", "bershka", "stradivarius"];
   }
 

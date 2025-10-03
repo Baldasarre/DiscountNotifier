@@ -7,6 +7,38 @@
   --shadow-blue: #c9e1ff 0.2rem 0.2rem 3rem 0.1rem;
 }
 
+
+.element::-webkit-scrollbar {
+  display: none;
+}
+
+
+body::-webkit-scrollbar {
+  display: none;
+}
+
+html::-webkit-scrollbar {
+  display: none;
+}
+
+
+*::-webkit-scrollbar {
+  display: none;
+}
+
+/* Firefox scrollbar*/
+.element {
+  scrollbar-width: none; 
+}
+
+body {
+  scrollbar-width: none; 
+}
+
+html {
+  scrollbar-width: none; 
+}
+
 html {
   font-family: "Roboto Slab", "Quicksand", sans-serif;
   opacity: 0;
@@ -26,7 +58,6 @@ body {
   margin: 0;
   height: 100vh;
 }
-
 
 body::before {
   content: "";
@@ -412,7 +443,7 @@ h2 {
   overflow: hidden;
   margin: 0;
   border-radius: 2rem;
-  width: 28.5rem;
+  width: inherit;
   height: 14rem;
   margin-top: 0;
   background: #e0eeff;
@@ -430,6 +461,15 @@ h2 {
 
 .addedItemInfoBox {
   display: flex;
+}
+
+.itemImgWrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 149px;
+  height: inherit;
+  overflow: clip;
 }
 
 .itemImg {
@@ -583,7 +623,7 @@ h2 {
     overflow: hidden;
     margin: 0;
     border-radius: 2rem;
-    width: 28.5rem;
+    width: inherit;
     height: 14rem;
     margin-top: 0;
     background: #e8f2fe;
@@ -659,7 +699,7 @@ h2 {
   #brandBoxInstruction {
     margin-top: 4rem;
     margin-bottom: 2rem;
-}
+  }
 }
 
 /* Confirmation Toast Animations */

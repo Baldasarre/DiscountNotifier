@@ -51,7 +51,9 @@ export function createProductCardHTML(product) {
       <div class="addedItemBox" data-id="${product.id}" data-product-id="${
     product.id
   }">
-        <img class="itemImg" src="${imgSrc}" alt="${product.title}" />
+        <div class="itemImgWrapper">
+          <img class="itemImg" src="${imgSrc}" alt="${product.title}" />
+        </div>
         <div class="addedItemButtonsAndInfoBox">
           <div class="addedItemInfoBox">
             <img class="itemBrandImg" src="${brandLogo}" alt="${
