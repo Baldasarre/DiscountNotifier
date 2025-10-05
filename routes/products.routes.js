@@ -7,6 +7,10 @@ const csrf = require("csurf");
 const config = require("../config/environment");
 const zaraService = require("../services/zara.service");
 const bershkaService = require("../services/bershka.service");
+const { createServiceLogger } = require("../utils/logger");
+const cache = require("../utils/cache");
+
+const logger = createServiceLogger("products");
 
 const csrfProtection = csrf({ cookie: true });
 
@@ -15,17 +19,38 @@ router.get("/", async (req, res) => {
     const { page = 1, limit = 20, gender, search, availability } = req.query;
 
     const offset = (page - 1) * limit;
-    const filters = {};
+    const filters = {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      brand: "zara"
+    };
 
     if (gender) filters.gender = gender;
     if (search) filters.search = search;
     if (availability) filters.availability = availability;
 
+    // Cache kontrolü
+    const cached = cache.getCachedProducts(filters);
+    if (cached) {
+      return res.json({
+        success: true,
+        products: cached,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: cached.length,
+        },
+        cached: true
+      });
+    }
+
     const result = await productService.getProducts({
       brand: "zara",
       limit: parseInt(limit),
       page: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
-      ...filters,
+      gender,
+      search,
+      availability
     });
     const products = result.products || [];
 
@@ -51,6 +76,9 @@ router.get("/", async (req, res) => {
       lastUpdated: product.last_updated,
     }));
 
+    // Cache'e kaydet
+    cache.setCachedProducts(filters, formattedProducts);
+
     res.json({
       success: true,
       products: formattedProducts,
@@ -59,9 +87,10 @@ router.get("/", async (req, res) => {
         limit: parseInt(limit),
         total: formattedProducts.length,
       },
+      cached: false
     });
   } catch (error) {
-    console.error("Ürünler listelenirken hata:", error);
+    logger.error("Ürünler listelenirken hata:", error);
     res.status(500).json({
       success: false,
       message: "Ürünler yüklenirken bir hata oluştu",
@@ -72,9 +101,7 @@ router.get("/", async (req, res) => {
 router.get("/tracked", authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
-    console.log(
-      `🔍 /tracked (SADECE ZARA) endpoint çağrıldı - User ID: ${userId} - ${new Date().toISOString()}`
-    );
+    logger.info(`/tracked (SADECE ZARA) endpoint çağrıldı - User ID: ${userId} - ${new Date().toISOString()}`);
     const db = require("../config/database");
 
     const trackedZaraProducts = await new Promise((resolve, reject) => {
@@ -97,9 +124,7 @@ router.get("/tracked", authenticate, async (req, res) => {
 
     const trackedProducts = trackedZaraProducts;
 
-    console.log(
-      `📦 Database'den dönen (SADECE ZARA) ürün sayısı: ${trackedProducts.length}`
-    );
+    logger.info(`Database'den dönen (SADECE ZARA) ürün sayısı: ${trackedProducts.length}`);
 
     const formattedProducts = trackedProducts.map((product) => {
       return {
@@ -120,20 +145,16 @@ router.get("/tracked", authenticate, async (req, res) => {
       };
     });
 
-    console.log(
-      `Frontend'e gönderilen (SADECE ZARA) ürün sayısı: ${formattedProducts.length}`
-    );
-    console.log(
-      `Frontend'e gönderilen ID'ler:`,
-      formattedProducts.map((p) => p.id)
-    );
+    logger.info(`Frontend'e gönderilen (SADECE ZARA) ürün sayısı: ${formattedProducts.length}`);
+    logger.info(`Frontend'e gönderilen ID'ler:`,
+      formattedProducts.map((p) => p.id));
 
     res.json({
       success: true,
       products: formattedProducts,
     });
   } catch (error) {
-    console.error("Takip edilen ZARA ürünleri alınırken hata:", error);
+    logger.error("Takip edilen ZARA ürünleri alınırken hata:", error);
     if (!res.headersSent) {
       res.status(500).json({
         success: false,
@@ -183,7 +204,7 @@ router.get("/:id", async (req, res) => {
       product: formattedProduct,
     });
   } catch (error) {
-    console.error("Ürün getirilirken hata:", error);
+    logger.error("Ürün getirilirken hata:", error);
     res.status(500).json({
       success: false,
       message: "Ürün yüklenirken bir hata oluştu",
@@ -195,7 +216,7 @@ router.post("/refresh", csrfProtection, async (req, res) => {
   try {
     const { brand = "zara" } = req.body;
 
-    console.log(`🔄 Manuel ${brand} güncellemesi istendi`);
+    logger.info("� Manuel ${brand} güncellemesi istendi");
     const result = await schedulerService.triggerManualUpdate(brand);
 
     if (result) {
@@ -210,7 +231,7 @@ router.post("/refresh", csrfProtection, async (req, res) => {
       });
     }
   } catch (error) {
-    console.error("Manuel güncelleme hatası:", error);
+    logger.error("Manuel güncelleme hatası:", error);
     res.status(500).json({
       success: false,
       message: "Güncelleme sırasında bir hata oluştu",
@@ -256,7 +277,7 @@ router.get("/stats/summary", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("İstatistikler alınırken hata:", error);
+    logger.error("İstatistikler alınırken hata:", error);
     res.status(500).json({
       success: false,
       message: "İstatistikler yüklenirken bir hata oluştu",
@@ -273,7 +294,7 @@ router.get("/scheduler/status", async (req, res) => {
       scheduler: status,
     });
   } catch (error) {
-    console.error("Scheduler durumu alınırken hata:", error);
+    logger.error("Scheduler durumu alınırken hata:", error);
     res.status(500).json({
       success: false,
       message: "Scheduler durumu alınamadı",
@@ -282,7 +303,7 @@ router.get("/scheduler/status", async (req, res) => {
 });
 
 router.post("/track", csrfProtection, authenticate, async (req, res) => {
-  console.log("🔥🔥🔥 PRODUCTS TRACK ENDPOINT CALLED 🔥🔥🔥");
+  logger.info("��� PRODUCTS TRACK ENDPOINT CALLED ���");
   try {
     const { productUrl } = req.body;
     const userId = req.user.id;
@@ -299,7 +320,7 @@ router.post("/track", csrfProtection, authenticate, async (req, res) => {
 
     return res.json(result);
   } catch (error) {
-    console.error("Error tracking product:", error);
+    logger.error("Error tracking product:", error);
     res.status(500).json({
       success: false,
       message: error.message || "Failed to track product",
@@ -325,7 +346,7 @@ router.delete(
         message: "Ürün takip listesinden kaldırıldı",
       });
     } catch (error) {
-      console.error("Ürün takipten çıkarılırken hata:", error);
+      logger.error("Ürün takipten çıkarılırken hata:", error);
       res.status(500).json({
         success: false,
         message: "Ürün takipten çıkarılırken bir hata oluştu",
@@ -336,15 +357,15 @@ router.delete(
 
 router.post("/zara/fetch-all", csrfProtection, async (req, res) => {
   try {
-    console.log("🚀 Zara ürün çekme işlemi başlatılıyor...");
+    logger.info("Zara ürün çekme işlemi başlatılıyor...");
 
     zaraService
       .fetchAndSaveAllProducts()
       .then((result) => {
-        console.log("✅ Zara ürün çekme işlemi tamamlandı:", result);
+        logger.info("Zara ürün çekme işlemi tamamlandı: result");
       })
       .catch((error) => {
-        console.error("❌ Zara ürün çekme işlemi hatası:", error);
+        logger.error("Zara ürün çekme işlemi hatası:", error);
       });
 
     res.json({
@@ -355,7 +376,7 @@ router.post("/zara/fetch-all", csrfProtection, async (req, res) => {
       note: "İşlem durumunu /api/products/stats/summary endpoint'inden takip edebilirsiniz.",
     });
   } catch (error) {
-    console.error("Zara ürün çekme hatası:", error);
+    logger.error("Zara ürün çekme hatası:", error);
     res.status(500).json({
       success: false,
       message: "Ürün çekme işlemi başlatılamadı",
@@ -388,7 +409,7 @@ router.get("/zara/categories", async (req, res) => {
       total: categories.length,
     });
   } catch (error) {
-    console.error("Kategoriler alınırken hata:", error);
+    logger.error("Kategoriler alınırken hata:", error);
     res.status(500).json({
       success: false,
       message: "Kategoriler yüklenirken bir hata oluştu",
@@ -403,7 +424,7 @@ router.post(
     try {
       const { categoryId } = req.params;
 
-      console.log(`🔄 ${categoryId} kategorisinden ürün çekiliyor...`);
+      logger.info("� ${categoryId} kategorisinden ürün çekiliyor...");
 
       const products = await zaraService.fetchProducts(categoryId);
 
@@ -431,7 +452,7 @@ router.post(
         });
       }
     } catch (error) {
-      console.error("Kategori ürün çekme hatası:", error);
+      logger.error("Kategori ürün çekme hatası:", error);
       res.status(500).json({
         success: false,
         message: "Ürün çekme işlemi başarısız oldu",
@@ -464,7 +485,7 @@ function extractZaraProductInfo(url) {
 
     return null;
   } catch (error) {
-    console.error("URL parse hatası:", error);
+    logger.error("URL parse hatası:", error);
     return null;
   }
 }

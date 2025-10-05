@@ -3,13 +3,16 @@ const router = express.Router();
 const productService = require("../services/product.service");
 const trackingService = require("../services/tracking.service");
 const authenticate = require("../middleware/authenticate");
+const { createServiceLogger } = require("../utils/logger");
+
+const logger = createServiceLogger("simple-unified");
 
 router.get("/products", async (req, res) => {
   try {
     const result = await productService.getProducts(req.query);
     res.json(result);
   } catch (error) {
-    console.error("Error fetching products:", error);
+    logger.error("Error fetching products:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch products",
@@ -25,7 +28,7 @@ router.get("/zara", async (req, res) => {
     });
     res.json(result);
   } catch (error) {
-    console.error("Error fetching Zara products:", error);
+    logger.error("Error fetching Zara products:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch Zara products",
@@ -41,7 +44,7 @@ router.get("/bershka", async (req, res) => {
     });
     res.json(result);
   } catch (error) {
-    console.error("Error fetching Bershka products:", error);
+    logger.error("Error fetching Bershka products:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch Bershka products",
@@ -57,7 +60,7 @@ router.get("/stradivarius", async (req, res) => {
     });
     res.json(result);
   } catch (error) {
-    console.error("Error fetching Stradivarius products:", error);
+    logger.error("Error fetching Stradivarius products:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch Stradivarius products",
@@ -82,7 +85,7 @@ router.get("/search", async (req, res) => {
     });
     res.json(result);
   } catch (error) {
-    console.error("Error searching products:", error);
+    logger.error("Error searching products:", error);
     res.status(500).json({
       success: false,
       message: "Failed to search products",
@@ -96,7 +99,7 @@ router.get("/stats", async (req, res) => {
     const result = await productService.getProductStats(brand);
     res.json(result);
   } catch (error) {
-    console.error("Error fetching stats:", error);
+    logger.error("Error fetching stats:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch statistics",
@@ -113,7 +116,7 @@ router.get("/tracked", authenticate, async (req, res) => {
     );
     res.json(result);
   } catch (error) {
-    console.error("Error fetching tracked products:", error);
+    logger.error("Error fetching tracked products:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch tracked products",
@@ -132,7 +135,7 @@ router.get("/tracking-count", authenticate, async (req, res) => {
       maxAllowed: 12,
     });
   } catch (error) {
-    console.error("Error fetching tracking count:", error);
+    logger.error("Error fetching tracking count:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch tracking count",
@@ -141,30 +144,30 @@ router.get("/tracking-count", authenticate, async (req, res) => {
 });
 
 router.post("/track", authenticate, async (req, res) => {
-  console.log("🔥🔥🔥 TRACK ENDPOINT CALLED 🔥🔥🔥");
+  logger.info("��� TRACK ENDPOINT CALLED ���");
   try {
     const userId = req.user.id;
     const { productUrl } = req.body;
 
-    console.log(
-      `🔧 [ROUTES] POST /api/simple/track - userId: ${userId}, URL: ${productUrl}`
+    logger.info(
+      ` [ROUTES] POST /api/simple/track - userId: ${userId}, URL: ${productUrl}`
     );
 
     if (!productUrl) {
-      console.log(`❌ [ROUTES] Missing productUrl in request`);
+      logger.error("[ROUTES] Missing productUrl in request");
       return res.status(400).json({
         success: false,
         message: "Product URL is required",
       });
     }
 
-    console.log(
-      `🔧 [ROUTES] Calling trackingService.trackProductByUrl(${userId}, ${productUrl})`
+    logger.info(
+      ` [ROUTES] Calling trackingService.trackProductByUrl(${userId}, ${productUrl})`
     );
     const result = await trackingService.trackProductByUrl(userId, productUrl);
     res.json(result);
   } catch (error) {
-    console.error("Error tracking product:", error);
+    logger.error("Error tracking product:", error);
     res.status(500).json({
       success: false,
       message: error.message || "Failed to track product",
@@ -177,24 +180,24 @@ router.delete("/untrack/:productId", authenticate, async (req, res) => {
     const userId = req.user.id;
     const { productId } = req.params;
 
-    console.log(
-      `🔧 [ROUTES] DELETE /api/simple/untrack/${productId} - userId: ${userId}`
+    logger.info(
+      ` [ROUTES] DELETE /api/simple/untrack/${productId} - userId: ${userId}`
     );
 
     if (!productId) {
-      console.log(`❌ [ROUTES] Missing productId in request`);
+      logger.error("[ROUTES] Missing productId in request");
       return res.status(400).json({
         success: false,
         message: "Product ID is required",
       });
     }
 
-    console.log(
-      `🔧 [ROUTES] Calling trackingService.untrackProduct(${userId}, ${productId})`
+    logger.info(
+      ` [ROUTES] Calling trackingService.untrackProduct(${userId}, ${productId})`
     );
     const result = await trackingService.untrackProduct(userId, productId);
 
-    console.log(`✅ [ROUTES] Tracking service result:`, result);
+    logger.info("[ROUTES] Tracking service result: result");
 
     res.json({
       success: true,
@@ -202,7 +205,7 @@ router.delete("/untrack/:productId", authenticate, async (req, res) => {
       result: result,
     });
   } catch (error) {
-    console.error("❌ [ROUTES] Error untracking product:", error);
+    logger.error("[ROUTES] Error untracking product:", error);
     res.status(500).json({
       success: false,
       message: error.message || "Failed to untrack product",

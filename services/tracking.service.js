@@ -1,5 +1,8 @@
 const db = require("../config/database");
 const productService = require("./product.service");
+const { createServiceLogger } = require("../utils/logger");
+
+const logger = createServiceLogger("tracking");
 
 class TrackingService {
   constructor() {
@@ -14,7 +17,7 @@ class TrackingService {
    * @returns {Promise<Object>} Product matching result
    */
   async handleBershkaProductMatching(productId, colorId = null) {
-    console.log(`🔧 [BERSHKA] handleBershkaProductMatching - productId: ${productId}, colorId: ${colorId}`);
+    logger.info("[BERSHKA] handleBershkaProductMatching - productId: ${productId}, colorId: ${colorId}");
 
     return new Promise((resolve, reject) => {
       // First, try to find the product with the main product ID
@@ -22,12 +25,12 @@ class TrackingService {
 
       db.get(query, [productId], async (err, baseProduct) => {
         if (err) {
-          console.error(`❌ [BERSHKA] Database error:`, err);
+          logger.error("[BERSHKA] Database error:", err);
           return reject(err);
         }
 
         if (!baseProduct) {
-          console.log(`❌ [BERSHKA] No product found with ID: ${productId}`);
+          logger.error("[BERSHKA] No product found with ID: ${productId}");
           return resolve({
             success: false,
             message: `Product with ID ${productId} not found in database`,
@@ -35,11 +38,11 @@ class TrackingService {
           });
         }
 
-        console.log(`✅ [BERSHKA] Found base product: ${baseProduct.name}, color_id: ${baseProduct.color_id}`);
+        logger.info("[BERSHKA] Found base product: ${baseProduct.name}, color_id: ${baseProduct.color_id}");
 
         // If no colorId in URL, return the base product
         if (!colorId) {
-          console.log(`✅ [BERSHKA] No color specified, using base product`);
+          logger.info("[BERSHKA] No color specified, using base product");
           return resolve({
             success: true,
             product: baseProduct,
@@ -49,7 +52,7 @@ class TrackingService {
 
         // If colorId matches the base product's color_id, return base product
         if (baseProduct.color_id === colorId) {
-          console.log(`✅ [BERSHKA] Color matches base product (${colorId})`);
+          logger.info("[BERSHKA] Color matches base product (${colorId})");
           return resolve({
             success: true,
             product: baseProduct,
@@ -58,10 +61,10 @@ class TrackingService {
         }
 
         // Color doesn't match, check catentryIds for the requested color
-        console.log(`🔍 [BERSHKA] Color mismatch (${colorId} vs ${baseProduct.color_id}), checking catentryIds...`);
+        logger.debug("[BERSHKA] Color mismatch (${colorId} vs ${baseProduct.color_id}), checking catentryIds...");
 
         if (!baseProduct.catentryIds) {
-          console.log(`❌ [BERSHKA] No catentryIds found for product ${productId}`);
+          logger.error("[BERSHKA] No catentryIds found for product ${productId}");
           return resolve({
             success: false,
             message: `Color ${colorId} not available for this product`,
@@ -75,7 +78,7 @@ class TrackingService {
             ? JSON.parse(baseProduct.catentryIds)
             : baseProduct.catentryIds;
         } catch (parseError) {
-          console.error(`❌ [BERSHKA] Failed to parse catentryIds:`, parseError);
+          logger.error("[BERSHKA] Failed to parse catentryIds: parseError");
           return resolve({
             success: false,
             message: `Invalid catentryIds data for product ${productId}`,
@@ -83,13 +86,13 @@ class TrackingService {
           });
         }
 
-        console.log(`🔍 [BERSHKA] Searching in catentryIds:`, catentryIds);
+        logger.debug("[BERSHKA] Searching in catentryIds: catentryIds");
 
         // Find the color in catentryIds
         const colorEntry = catentryIds.find(entry => entry.id === colorId);
 
         if (!colorEntry) {
-          console.log(`❌ [BERSHKA] Color ${colorId} not found in catentryIds`);
+          logger.error("[BERSHKA] Color ${colorId} not found in catentryIds");
           return resolve({
             success: false,
             message: `Color ${colorId} not available for this product`,
@@ -97,19 +100,19 @@ class TrackingService {
           });
         }
 
-        console.log(`✅ [BERSHKA] Found color entry:`, colorEntry);
+        logger.info("[BERSHKA] Found color entry: colorEntry");
 
         // Now find the product with the catentryId
         const colorProductQuery = "SELECT * FROM bershka_unique_product_details WHERE product_id = ?";
 
         db.get(colorProductQuery, [colorEntry.catentryId], (err, colorProduct) => {
           if (err) {
-            console.error(`❌ [BERSHKA] Error finding color product:`, err);
+            logger.error("[BERSHKA] Error finding color product:", err);
             return reject(err);
           }
 
           if (!colorProduct) {
-            console.log(`❌ [BERSHKA] Color product not found with catentryId: ${colorEntry.catentryId}`);
+            logger.error("[BERSHKA] Color product not found with catentryId: ${colorEntry.catentryId}");
             return resolve({
               success: false,
               message: `Color variant product not found in database`,
@@ -117,7 +120,7 @@ class TrackingService {
             });
           }
 
-          console.log(`✅ [BERSHKA] Found color product: ${colorProduct.name}, ID: ${colorProduct.product_id}`);
+          logger.info("[BERSHKA] Found color product: ${colorProduct.name}, ID: ${colorProduct.product_id}");
 
           resolve({
             success: true,
@@ -130,24 +133,60 @@ class TrackingService {
   }
 
   /**
+   * Helper function to handle Zara reference code lookup
+   * @param {string} refCode - Reference code in format XXXX/XXX/XXX (4592/217/401)
+   * @returns {Promise<Object>} Product lookup result
+   */
+  async handleZaraRefCode(refCode) {
+    logger.info(`[ZARA] handleZaraRefCode - refCode: ${refCode}`);
+
+    return new Promise((resolve, reject) => {
+      const query = "SELECT * FROM zara_products WHERE display_reference = ?";
+
+      db.get(query, [refCode], (err, product) => {
+        if (err) {
+          logger.error("[ZARA] Database error for ref code:", err);
+          return reject(err);
+        }
+
+        if (!product) {
+          logger.error(`[ZARA] No product found with reference: ${refCode}`);
+          return resolve({
+            success: false,
+            message: `Product with reference ${refCode} not found`,
+            productId: null
+          });
+        } else {
+          logger.info(`[ZARA] Found product by reference: ${product.name}, ID: ${product.product_id}`);
+          return resolve({
+            success: true,
+            product: product,
+            productId: product.product_id
+          });
+        }
+      });
+    });
+  }
+
+  /**
    * Helper function to handle Bershka reference code lookup
    * @param {string} refCode - Reference code in format XXXX/XXX/XXX
    * @returns {Promise<Object>} Product lookup result
    */
   async handleBershkaRefCode(refCode) {
-    console.log(`🔧 [BERSHKA] handleBershkaRefCode - refCode: ${refCode}`);
+    logger.info(`[BERSHKA] handleBershkaRefCode - refCode: ${refCode}`);
 
     return new Promise((resolve, reject) => {
       const query = "SELECT * FROM bershka_unique_product_details WHERE reference = ?";
 
       db.get(query, [refCode], (err, product) => {
         if (err) {
-          console.error(`❌ [BERSHKA] Database error for ref code:`, err);
+          logger.error("[BERSHKA] Database error for ref code:", err);
           return reject(err);
         }
 
         if (!product) {
-          console.log(`❌ [BERSHKA] No product found with reference: ${refCode}`);
+          logger.error(`[BERSHKA] No product found with reference: ${refCode}`);
           return resolve({
             success: false,
             message: `Product with reference ${refCode} not found`,
@@ -155,7 +194,7 @@ class TrackingService {
           });
         }
 
-        console.log(`✅ [BERSHKA] Found product by reference: ${product.name}, ID: ${product.product_id}`);
+        logger.info(`[BERSHKA] Found product by reference: ${product.name}, ID: ${product.product_id}`);
 
         resolve({
           success: true,
@@ -172,19 +211,19 @@ class TrackingService {
    * @returns {Promise<Object>} Product lookup result
    */
   async handleStradivariusProductLookup(productId) {
-    console.log(`🔧 [STRADIVARIUS] handleStradivariusProductLookup - productId: ${productId}`);
+    logger.info("[STRADIVARIUS] handleStradivariusProductLookup - productId: ${productId}");
 
     return new Promise((resolve, reject) => {
       const query = "SELECT * FROM stradivarius_unique_product_details WHERE product_id = ?";
 
       db.get(query, [productId], (err, product) => {
         if (err) {
-          console.error(`❌ [STRADIVARIUS] Database error:`, err);
+          logger.error("[STRADIVARIUS] Database error:", err);
           return reject(err);
         }
 
         if (!product) {
-          console.log(`❌ [STRADIVARIUS] No product found with ID: ${productId}`);
+          logger.error("[STRADIVARIUS] No product found with ID: ${productId}");
           return resolve({
             success: false,
             message: `Product with ID ${productId} not found in database`,
@@ -192,7 +231,7 @@ class TrackingService {
           });
         }
 
-        console.log(`✅ [STRADIVARIUS] Found product: ${product.name}, ID: ${product.product_id}`);
+        logger.info("[STRADIVARIUS] Found product: ${product.name}, ID: ${product.product_id}");
 
         resolve({
           success: true,
@@ -209,7 +248,7 @@ class TrackingService {
    * @returns {Promise<Object>} Product lookup result
    */
   async handleStradivariusRefCode(refCode) {
-    console.log(`🔧 [STRADIVARIUS] handleStradivariusRefCode - refCode: ${refCode}`);
+    logger.info(`[STRADIVARIUS] handleStradivariusRefCode - refCode: ${refCode}`);
 
     return new Promise((resolve, reject) => {
       // Use ORDER BY id ASC LIMIT 1 to get the first (oldest) record for duplicates
@@ -217,12 +256,12 @@ class TrackingService {
 
       db.get(query, [refCode], (err, product) => {
         if (err) {
-          console.error(`❌ [STRADIVARIUS] Database error for ref code:`, err);
+          logger.error("[STRADIVARIUS] Database error for ref code:", err);
           return reject(err);
         }
 
         if (!product) {
-          console.log(`❌ [STRADIVARIUS] No product found with reference: ${refCode}`);
+          logger.error(`[STRADIVARIUS] No product found with reference: ${refCode}`);
           return resolve({
             success: false,
             message: `Product with reference ${refCode} not found`,
@@ -230,7 +269,7 @@ class TrackingService {
           });
         }
 
-        console.log(`✅ [STRADIVARIUS] Found product by reference: ${product.name}, ID: ${product.product_id} (first match from duplicates)`);
+        logger.info(`[STRADIVARIUS] Found product by reference: ${product.name}, ID: ${product.product_id} (first match from duplicates)`);
 
         resolve({
           success: true,
@@ -294,8 +333,8 @@ class TrackingService {
             }
 
             if (brand === "bershka") {
-              console.log(
-                `🔧 [TRACKING] Fetching Bershka detail from unique details table...`
+              logger.info(
+                ` [TRACKING] Fetching Bershka detail from unique details table...`
               );
 
               try {
@@ -304,8 +343,8 @@ class TrackingService {
                   ? `${productId}_${colorId}`
                   : `${productId}_default`;
 
-                console.log(
-                  `🎨 [TRACKING] Looking for Bershka unique product: ${bershkaUniqueId}`
+                logger.info(
+                  ` [TRACKING] Looking for Bershka unique product: ${bershkaUniqueId}`
                 );
 
                 const detailProduct = await new Promise((resolve, reject) => {
@@ -321,8 +360,8 @@ class TrackingService {
                 });
 
                 if (detailProduct) {
-                  console.log(
-                    `✅ [TRACKING] Found Bershka detail: ${detailProduct.name}, Price: ${detailProduct.price}`
+                  logger.info(
+                    ` [TRACKING] Found Bershka detail: ${detailProduct.name}, Price: ${detailProduct.price}`
                   );
 
                   const updateQuery =
@@ -339,14 +378,14 @@ class TrackingService {
                     const db = require("../config/database");
                     db.run(updateQuery, params, function (err) {
                       if (err) {
-                        console.error(
-                          `❌ [TRACKING] Failed to update Bershka product ${productId}:`,
+                        logger.error(
+                          ` [TRACKING] Failed to update Bershka product ${productId}:`,
                           err
                         );
                         reject(err);
                       } else {
-                        console.log(
-                          `✅ [TRACKING] Updated Bershka product ${productId} with detail info`
+                        logger.info(
+                          ` [TRACKING] Updated Bershka product ${productId} with detail info`
                         );
                         resolve();
                       }
@@ -358,21 +397,21 @@ class TrackingService {
                     brand
                   );
                 } else {
-                  console.log(
-                    `⚠️ [TRACKING] No detail found for Bershka unique ID: ${bershkaUniqueId}`
+                  logger.info(
+                    `️ [TRACKING] No detail found for Bershka unique ID: ${bershkaUniqueId}`
                   );
                 }
               } catch (detailError) {
-                console.error(
-                  `⚠️ [TRACKING] Failed to fetch Bershka detail for ${productId}:`,
+                logger.error(
+                  `️ [TRACKING] Failed to fetch Bershka detail for ${productId}:`,
                   detailError.message
                 );
               }
             }
 
             if (brand === "stradivarius") {
-              console.log(
-                `🔧 [TRACKING] Fetching Stradivarius detail from unique details table...`
+              logger.info(
+                ` [TRACKING] Fetching Stradivarius detail from unique details table...`
               );
 
               try {
@@ -381,8 +420,8 @@ class TrackingService {
                   ? `${productId}_${colorId}`
                   : `${productId}_default`;
 
-                console.log(
-                  `🎨 [TRACKING] Looking for Stradivarius unique product: ${stradUniqueId}`
+                logger.info(
+                  ` [TRACKING] Looking for Stradivarius unique product: ${stradUniqueId}`
                 );
 
                 const detailProduct = await new Promise((resolve, reject) => {
@@ -398,8 +437,8 @@ class TrackingService {
                 });
 
                 if (detailProduct) {
-                  console.log(
-                    `✅ [TRACKING] Found Stradivarius detail: ${detailProduct.name}, Price: ${detailProduct.price}`
+                  logger.info(
+                    ` [TRACKING] Found Stradivarius detail: ${detailProduct.name}, Price: ${detailProduct.price}`
                   );
 
                   const updateQuery =
@@ -416,14 +455,14 @@ class TrackingService {
                     const db = require("../config/database");
                     db.run(updateQuery, params, function (err) {
                       if (err) {
-                        console.error(
-                          `❌ [TRACKING] Failed to update Stradivarius product ${productId}:`,
+                        logger.error(
+                          ` [TRACKING] Failed to update Stradivarius product ${productId}:`,
                           err
                         );
                         reject(err);
                       } else {
-                        console.log(
-                          `✅ [TRACKING] Updated Stradivarius product ${productId} with detail info`
+                        logger.info(
+                          ` [TRACKING] Updated Stradivarius product ${productId} with detail info`
                         );
                         resolve();
                       }
@@ -435,8 +474,8 @@ class TrackingService {
                     brand
                   );
                 } else {
-                  console.log(
-                    `⚠️ [TRACKING] No detail found for Stradivarius unique ID: ${stradUniqueId}`
+                  logger.info(
+                    `️ [TRACKING] No detail found for Stradivarius unique ID: ${stradUniqueId}`
                   );
 
                   if (
@@ -444,8 +483,8 @@ class TrackingService {
                     !product.image.startsWith("https://") ||
                     !product.price
                   ) {
-                    console.log(
-                      `🔧 [TRACKING] Fallback: Fetching Stradivarius detail from API...`
+                    logger.info(
+                      ` [TRACKING] Fallback: Fetching Stradivarius detail from API...`
                     );
 
                     const stradivariusService = require("../services/stradivarius.service");
@@ -458,8 +497,8 @@ class TrackingService {
                     let productPrice = null;
 
                     if (detailResult.success) {
-                      console.log(
-                        `🎨 [TRACKING] Using color ID for image matching: ${colorId}`
+                      logger.info(
+                        ` [TRACKING] Using color ID for image matching: ${colorId}`
                       );
                       imageUrl = await service._getProductImageFromDetail(
                         productId,
@@ -485,8 +524,8 @@ class TrackingService {
                             firstColor.sizes[0].price
                           ) {
                             productPrice = parseInt(firstColor.sizes[0].price);
-                            console.log(
-                              `✅ [TRACKING] Found Stradivarius price for ${productId}: ${productPrice} kuruş (${(
+                            logger.info(
+                              ` [TRACKING] Found Stradivarius price for ${productId}: ${productPrice} kuruş (${(
                                 productPrice / 100
                               ).toFixed(2)} TL)`
                             );
@@ -503,8 +542,8 @@ class TrackingService {
                       updateQuery =
                         "UPDATE stradivarius_unique_product_details SET image_url = ?, last_updated = ?";
                       params = [imageUrl, new Date().toISOString()];
-                      console.log(
-                        `✅ [TRACKING] Found Stradivarius media URL for ${productId}: ${imageUrl}`
+                      logger.info(
+                        ` [TRACKING] Found Stradivarius media URL for ${productId}: ${imageUrl}`
                       );
                     }
 
@@ -514,8 +553,8 @@ class TrackingService {
                         "price = ?, last_updated = ?"
                       );
                       params.splice(-1, 0, productPrice);
-                      console.log(
-                        `✅ [TRACKING] Found Stradivarius price for ${productId}: ${(
+                      logger.info(
+                        ` [TRACKING] Found Stradivarius price for ${productId}: ${(
                           productPrice / 100
                         ).toFixed(2)} TL`
                       );
@@ -527,14 +566,14 @@ class TrackingService {
                     await new Promise((resolve, reject) => {
                       db.run(updateQuery, params, function (err) {
                         if (err) {
-                          console.error(
-                            `❌ [TRACKING] Failed to update Stradivarius product ${productId}:`,
+                          logger.error(
+                            ` [TRACKING] Failed to update Stradivarius product ${productId}:`,
                             err
                           );
                           reject(err);
                         } else {
-                          console.log(
-                            `✅ [TRACKING] Updated Stradivarius product ${productId} with detail info`
+                          logger.info(
+                            ` [TRACKING] Updated Stradivarius product ${productId} with detail info`
                           );
                           resolve();
                         }
@@ -548,15 +587,15 @@ class TrackingService {
                   }
                 }
               } catch (detailError) {
-                console.error(
-                  `⚠️ [TRACKING] Failed to fetch Stradivarius detail for ${productId}:`,
+                logger.error(
+                  `️ [TRACKING] Failed to fetch Stradivarius detail for ${productId}:`,
                   detailError.message
                 );
               }
             }
 
-            console.log(
-              `🔧 [TRACKING] Product data before ensureProductInUnified:`,
+            logger.info(
+              ` [TRACKING] Product data before ensureProductInUnified:`,
               {
                 id: product.id,
                 product_id: product.product_id,
@@ -625,7 +664,7 @@ class TrackingService {
 
               db.run(insertQuery, params, function (err) {
                 if (err) {
-                  console.error("❌ Error adding product tracking:", err);
+                  logger.error("Error adding product tracking:", err);
                   db.run("ROLLBACK");
                   return reject(err);
                 }
@@ -635,8 +674,8 @@ class TrackingService {
                     return reject(err);
                   }
 
-                  console.log(
-                    `✅ Product tracking added: User ${userId} -> ${brand}/${productId} (unified ID: ${unifiedProductId})`
+                  logger.info(
+                    ` Product tracking added: User ${userId} -> ${brand}/${productId} (unified ID: ${unifiedProductId})`
                   );
 
                   resolve({
@@ -679,8 +718,8 @@ class TrackingService {
           }
 
           if (existing) {
-            console.log(
-              `✅ Product ${
+            logger.info(
+              ` Product ${
                 product.id || product.product_id
               } already exists in unified table with ID: ${existing.id}`
             );
@@ -716,15 +755,15 @@ class TrackingService {
 
           db.run(insertQuery, params, function (err) {
             if (err) {
-              console.error(
-                `❌ Error inserting product into unified table:`,
+              logger.error(
+                ` Error inserting product into unified table:`,
                 err
               );
               return reject(err);
             }
 
-            console.log(
-              `✅ Inserted ${brand} product ${
+            logger.info(
+              ` Inserted ${brand} product ${
                 product.id || product.product_id
               } into unified table with ID: ${this.lastID}`
             );
@@ -798,7 +837,7 @@ class TrackingService {
 
       db.all(query, params, (err, rows) => {
         if (err) {
-          console.error("❌ Error fetching user tracked products:", err);
+          logger.error("Error fetching user tracked products:", err);
           return reject(err);
         }
 
@@ -824,7 +863,7 @@ class TrackingService {
               try {
                 customSettings = JSON.parse(row.custom_settings);
               } catch (e) {
-                console.error(
+                logger.error(
                   "Invalid JSON in custom_settings:",
                   row.custom_settings
                 );
@@ -850,8 +889,8 @@ class TrackingService {
           };
         });
 
-        console.log(
-          `📦 Retrieved ${trackedProducts.length} tracked products for user ${userId}`
+        logger.info(
+          ` Retrieved ${trackedProducts.length} tracked products for user ${userId}`
         );
 
         resolve({
@@ -876,7 +915,7 @@ class TrackingService {
 
       db.get(query, [userId], (err, result) => {
         if (err) {
-          console.error("❌ Error getting user tracking count:", err);
+          logger.error("Error getting user tracking count:", err);
           return reject(err);
         }
 
@@ -898,7 +937,7 @@ class TrackingService {
 
       db.get(query, [userId, productId], (err, record) => {
         if (err) {
-          console.error("❌ Error getting tracking record:", err);
+          logger.error("Error getting tracking record:", err);
           return reject(err);
         }
 
@@ -955,7 +994,7 @@ class TrackingService {
 
       db.run(query, params, function (err) {
         if (err) {
-          console.error("❌ Error updating tracking record:", err);
+          logger.error("Error updating tracking record:", err);
           return reject(err);
         }
 
@@ -1006,7 +1045,7 @@ class TrackingService {
 
       db.all(query, params, (err, rows) => {
         if (err) {
-          console.error("❌ Error fetching products needing alerts:", err);
+          logger.error("Error fetching products needing alerts:", err);
           return reject(err);
         }
 
@@ -1112,12 +1151,12 @@ class TrackingService {
 
       db.run(query, [cutoffISO], function (err) {
         if (err) {
-          console.error("❌ Error cleaning up inactive tracking:", err);
+          logger.error("Error cleaning up inactive tracking:", err);
           return reject(err);
         }
 
-        console.log(
-          `✅ Cleaned up ${this.changes} inactive tracking records (inactive > ${daysInactive} days)`
+        logger.info(
+          ` Cleaned up ${this.changes} inactive tracking records (inactive > ${daysInactive} days)`
         );
 
         resolve({
@@ -1136,8 +1175,8 @@ class TrackingService {
    * @returns {Promise<Object>} Tracking result with product details
    */
   async trackProductByUrl(userId, productUrl) {
-    console.log(
-      `🔧 [TRACKING] trackProductByUrl called - userId: ${userId}, URL: ${productUrl}`
+    logger.info(
+      ` [TRACKING] trackProductByUrl called - userId: ${userId}, URL: ${productUrl}`
     );
 
     let brand, productId, colorId;
@@ -1148,27 +1187,37 @@ class TrackingService {
     const refCodePattern = /^\d{4}\/\d{3}\/\d{3}$/;
 
     if (refCodePattern.test(productUrl.trim())) {
-      console.log(`🔧 [TRACKING] Input detected as reference code: ${productUrl}`);
+      logger.info(`[TRACKING] Input detected as reference code: ${productUrl}`);
 
-      // Try Bershka first, then Stradivarius
-      let refResult = await this.handleBershkaRefCode(productUrl.trim());
+      // Try Zara first, then Bershka, then Stradivarius
+      let refResult = await this.handleZaraRefCode(productUrl.trim());
 
       if (refResult.success) {
-        brand = "bershka";
+        brand = "zara";
         actualProduct = refResult.product;
         productId = refResult.productId;
-        console.log(`✅ [TRACKING] Found Bershka product via reference: ${actualProduct.name}`);
+        logger.info(`[TRACKING] Found Zara product via reference: ${actualProduct.name}`);
       } else {
-        // Try Stradivarius
-        refResult = await this.handleStradivariusRefCode(productUrl.trim());
+        // Try Bershka
+        refResult = await this.handleBershkaRefCode(productUrl.trim());
 
         if (refResult.success) {
-          brand = "stradivarius";
+          brand = "bershka";
           actualProduct = refResult.product;
           productId = refResult.productId;
-          console.log(`✅ [TRACKING] Found Stradivarius product via reference: ${actualProduct.name}`);
+          logger.info(`[TRACKING] Found Bershka product via reference: ${actualProduct.name}`);
         } else {
-          throw new Error(`Reference code ${productUrl.trim()} not found in Bershka or Stradivarius databases`);
+          // Try Stradivarius
+          refResult = await this.handleStradivariusRefCode(productUrl.trim());
+
+          if (refResult.success) {
+            brand = "stradivarius";
+            actualProduct = refResult.product;
+            productId = refResult.productId;
+            logger.info(`[TRACKING] Found Stradivarius product via reference: ${actualProduct.name}`);
+          } else {
+            throw new Error(`Reference code ${productUrl.trim()} not found in Zara, Bershka or Stradivarius databases`);
+          }
         }
       }
 
@@ -1184,7 +1233,7 @@ class TrackingService {
       }
     } else if (productUrl.includes("bershka.com")) {
       brand = "bershka";
-      console.log(`🔧 [TRACKING] Processing Bershka URL`);
+      logger.info("[TRACKING] Processing Bershka URL");
 
       let bershkaMatch = productUrl.match(/c0p(\d+)\.html/);
       if (!bershkaMatch) {
@@ -1193,13 +1242,13 @@ class TrackingService {
 
       if (bershkaMatch) {
         const extractedId = bershkaMatch[1];
-        console.log(`✅ [TRACKING] Extracted Bershka product ID: ${extractedId}`);
+        logger.info("[TRACKING] Extracted Bershka product ID: ${extractedId}");
 
         const colorMatch = productUrl.match(/colorId=(\d+)/);
         const extractedColorId = colorMatch ? colorMatch[1] : null;
 
         if (extractedColorId) {
-          console.log(`✅ [TRACKING] Extracted Bershka color ID: ${extractedColorId}`);
+          logger.info("[TRACKING] Extracted Bershka color ID: ${extractedColorId}");
         }
 
         // Use new Bershka matching logic
@@ -1213,22 +1262,22 @@ class TrackingService {
         productId = bershkaResult.productId;
         colorId = extractedColorId; // Keep the original colorId for customSettings
 
-        console.log(`✅ [TRACKING] Matched Bershka product: ${actualProduct.name}, final ID: ${productId}`);
+        logger.info("[TRACKING] Matched Bershka product: ${actualProduct.name}, final ID: ${productId}");
       } else {
-        console.log(
-          `❌ [TRACKING] Could not extract Bershka product ID from URL: ${productUrl}`
+        logger.info(
+          ` [TRACKING] Could not extract Bershka product ID from URL: ${productUrl}`
         );
         throw new Error("Could not extract Bershka product ID from URL");
       }
     } else if (productUrl.includes("stradivarius.com")) {
       brand = "stradivarius";
-      console.log(`🔧 [TRACKING] Processing Stradivarius URL`);
+      logger.info("[TRACKING] Processing Stradivarius URL");
 
       const pelementMatch = productUrl.match(/pelement=(\d+)/);
       if (pelementMatch) {
         const extractedId = pelementMatch[1];
-        console.log(
-          `✅ [TRACKING] Extracted Stradivarius product ID from pelement: ${extractedId}`
+        logger.info(
+          ` [TRACKING] Extracted Stradivarius product ID from pelement: ${extractedId}`
         );
 
         // Use new Stradivarius lookup logic
@@ -1241,13 +1290,13 @@ class TrackingService {
         actualProduct = stradResult.product;
         productId = stradResult.productId;
 
-        console.log(`✅ [TRACKING] Found Stradivarius product: ${actualProduct.name}, ID: ${productId}`);
+        logger.info("[TRACKING] Found Stradivarius product: ${actualProduct.name}, ID: ${productId}");
       } else {
         const directProductMatch = productUrl.match(/\/product\/(\d+)/);
         if (directProductMatch) {
           const extractedId = directProductMatch[1];
-          console.log(
-            `✅ [TRACKING] Extracted Stradivarius product ID from direct product URL: ${extractedId}`
+          logger.info(
+            ` [TRACKING] Extracted Stradivarius product ID from direct product URL: ${extractedId}`
           );
 
           // Use new Stradivarius lookup logic
@@ -1260,13 +1309,13 @@ class TrackingService {
           actualProduct = stradResult.product;
           productId = stradResult.productId;
 
-          console.log(`✅ [TRACKING] Found Stradivarius product: ${actualProduct.name}, ID: ${productId}`);
+          logger.info("[TRACKING] Found Stradivarius product: ${actualProduct.name}, ID: ${productId}");
         } else {
-          console.log(
-            `❌ [TRACKING] Could not extract Stradivarius product ID - no pelement or product ID found in URL: ${productUrl}`
+          logger.info(
+            ` [TRACKING] Could not extract Stradivarius product ID - no pelement or product ID found in URL: ${productUrl}`
           );
-          console.log(
-            `💡 [TRACKING] Stradivarius URLs must contain either pelement=ID or /product/ID parameter`
+          logger.info(
+            ` [TRACKING] Stradivarius URLs must contain either pelement=ID or /product/ID parameter`
           );
           throw new Error("Could not extract Stradivarius product ID from URL");
         }
@@ -1276,8 +1325,8 @@ class TrackingService {
       const stradColorMatch = productUrl.match(/colorId=(\d+)/);
       if (stradColorMatch) {
         colorId = stradColorMatch[1];
-        console.log(
-          `✅ [TRACKING] Extracted Stradivarius color ID: ${colorId}`
+        logger.info(
+          ` [TRACKING] Extracted Stradivarius color ID: ${colorId}`
         );
       }
 
@@ -1285,28 +1334,28 @@ class TrackingService {
       const productCodeMatch = productUrl.match(/-l(\d+)/);
       if (productCodeMatch) {
         const productCode = productCodeMatch[1];
-        console.log(
-          `✅ [TRACKING] Extracted Stradivarius product code: ${productCode}`
+        logger.info(
+          ` [TRACKING] Extracted Stradivarius product code: ${productCode}`
         );
         if (!customSettings) customSettings = {};
         customSettings.productCode = productCode;
       }
     } else {
-      console.log(
-        `❌ [TRACKING] Unsupported URL - not Zara, Bershka or Stradivarius: ${productUrl}`
+      logger.info(
+        ` [TRACKING] Unsupported URL - not Zara, Bershka or Stradivarius: ${productUrl}`
       );
       throw new Error(
         "Unsupported brand - only Zara, Bershka and Stradivarius URLs are supported"
       );
     }
 
-    console.log(
-      `🔧 [TRACKING] Extracted: brand=${brand}, productId=${productId}, colorId=${colorId}`
+    logger.info(
+      ` [TRACKING] Extracted: brand=${brand}, productId=${productId}, colorId=${colorId}`
     );
 
     if (!productId) {
-      console.log(
-        `❌ [TRACKING] Failed to extract product ID from URL: ${productUrl}`
+      logger.info(
+        ` [TRACKING] Failed to extract product ID from URL: ${productUrl}`
       );
       throw new Error("Could not extract product ID from URL");
     }
@@ -1315,8 +1364,8 @@ class TrackingService {
 
     // If we already found the actual product (for Bershka ref codes or URL matching), use it
     if (actualProduct) {
-      console.log(`✅ [TRACKING] Using already matched product: ${actualProduct.name}`);
-      console.log(`🔧 [TRACKING] Raw actualProduct data:`, {
+      logger.info("[TRACKING] Using already matched product: ${actualProduct.name}");
+      logger.info("[TRACKING] Raw actualProduct data:", {
         id: actualProduct.product_id,
         name: actualProduct.name,
         price: actualProduct.price,
@@ -1328,7 +1377,7 @@ class TrackingService {
       const productService = require("./product.service");
       product = productService.formatProduct(actualProduct);
 
-      console.log(`🔧 [TRACKING] Formatted product data:`, {
+      logger.info("[TRACKING] Formatted product data:", {
         id: product.id,
         title: product.title,
         formattedPrice: product.formattedPrice,
@@ -1338,15 +1387,15 @@ class TrackingService {
     } else {
       // For Zara and Stradivarius, use the old method
       const productService = require("./product.service");
-      console.log(
-        `🔧 [TRACKING] Checking if product exists: productId=${productId}, brand=${brand}`
+      logger.info(
+        ` [TRACKING] Checking if product exists: productId=${productId}, brand=${brand}`
       );
 
       product = await productService.getProductById(productId, brand);
 
       if (!product) {
-        console.log(
-          `⚠️ [TRACKING] Product ${productId} (${brand}) not found in database, creating placeholder for tracking`
+        logger.info(
+          `️ [TRACKING] Product ${productId} (${brand}) not found in database, creating placeholder for tracking`
         );
 
         const placeholderData = {
@@ -1382,8 +1431,8 @@ class TrackingService {
     };
 
     if (product.isPlaceholder) {
-      console.log(
-        `✅ [TRACKING] Allowing placeholder tracking for ${brand} product ${productId}`
+      logger.info(
+        ` [TRACKING] Allowing placeholder tracking for ${brand} product ${productId}`
       );
       return {
         success: true,
@@ -1402,16 +1451,16 @@ class TrackingService {
     );
     const formattedProduct = productService.formatProduct(product);
 
-    console.log(
-      `🔧 [TRACKING] Original product image_url: ${
+    logger.info(
+      ` [TRACKING] Original product image_url: ${
         product.image_url || product.imageUrl
       }`
     );
-    console.log(
-      `🔧 [TRACKING] Formatted product imgSrc: ${formattedProduct.imgSrc}`
+    logger.info(
+      ` [TRACKING] Formatted product imgSrc: ${formattedProduct.imgSrc}`
     );
-    console.log(
-      `🔧 [TRACKING] Formatted product imageUrl: ${formattedProduct.imageUrl}`
+    logger.info(
+      ` [TRACKING] Formatted product imageUrl: ${formattedProduct.imageUrl}`
     );
 
     const finalResult = {
@@ -1420,7 +1469,7 @@ class TrackingService {
       trackingUrl: productUrl,
     };
 
-    console.log(`🎯 [TRACKING] Final result being returned:`, {
+    logger.info("[TRACKING] Final result being returned:", {
       success: finalResult.success,
       productId: finalResult.product?.id,
       productName: finalResult.product?.title,
@@ -1439,9 +1488,7 @@ class TrackingService {
    */
   async removeProductTracking(userId, productId) {
     return new Promise((resolve, reject) => {
-      console.log(
-        `🔧 [TRACKING] removeProductTracking called - userId: ${userId}, productId: ${productId}`
-      );
+      logger.info(`[TRACKING] removeProductTracking called - userId: ${userId}, productId: ${productId}`);
 
       const findQuery = `
         SELECT utp.id, p.brand, p.product_id 
@@ -1450,29 +1497,23 @@ class TrackingService {
         WHERE utp.user_id = ? AND p.product_id = ?
       `;
 
-      console.log(
-        `🔧 [TRACKING] Finding tracking record - userId: ${userId}, productId: ${productId}`
-      );
-      console.log(`🔧 [TRACKING] Query:`, findQuery);
+      logger.info(`[TRACKING] Finding tracking record - userId: ${userId}, productId: ${productId}`);
 
       db.get(findQuery, [userId, productId], (err, record) => {
         if (err) {
-          console.error("❌ Error finding tracking record:", err);
+          logger.error("Error finding tracking record:", err);
           return reject(err);
         }
 
         if (!record) {
-          console.log(
-            `⚠️ [TRACKING] No tracking record found - userId: ${userId}, productId: ${productId}`
-          );
+          logger.info(`[TRACKING] No tracking record found - userId: ${userId}, productId: ${productId}`);
 
-          // Let's also check what records exist for this user
           db.all(
             "SELECT utp.id, p.product_id, p.brand, p.name FROM user_tracked_products_unified utp JOIN products_unified p ON utp.product_id = p.id WHERE utp.user_id = ?",
             [userId],
             (err, allRecords) => {
               if (!err) {
-                console.log(`🔍 [TRACKING] All tracking records for user ${userId}:`, allRecords);
+                logger.debug(`[TRACKING] All tracking records for user ${userId}:`, allRecords);
               }
             }
           );
@@ -1484,7 +1525,7 @@ class TrackingService {
           });
         }
 
-        console.log(`✅ [TRACKING] Found tracking record:`, {
+        logger.info("[TRACKING] Found tracking record:", {
           id: record.id,
           brand: record.brand,
           productId: record.product_id
@@ -1495,12 +1536,12 @@ class TrackingService {
 
         db.run(deleteQuery, [record.id], function (err) {
           if (err) {
-            console.error("❌ Error removing product tracking:", err);
+            logger.error("Error removing product tracking:", err);
             return reject(err);
           }
 
-          console.log(
-            `✅ [TRACKING] Successfully removed tracking - deleted ${this.changes} record(s) for ${record.brand}/${record.product_id}`
+          logger.info(
+            ` [TRACKING] Successfully removed tracking - deleted ${this.changes} record(s) for ${record.brand}/${record.product_id}`
           );
           resolve({
             success: true,

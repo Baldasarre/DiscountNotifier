@@ -756,4 +756,40 @@ if (form) {
   });
 }
 
-window.addEventListener("DOMContentLoaded", initializePage);
+// Heartbeat to keep user active
+let heartbeatInterval = null;
+
+async function sendHeartbeat() {
+  try {
+    await fetch(API_ENDPOINTS.HEARTBEAT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error) {
+    console.log("Heartbeat error:", error);
+  }
+}
+
+function startHeartbeat() {
+  // Send heartbeat every 30 seconds
+  heartbeatInterval = setInterval(sendHeartbeat, 30000);
+  // Send initial heartbeat
+  sendHeartbeat();
+}
+
+function stopHeartbeat() {
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval);
+    heartbeatInterval = null;
+  }
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  initializePage();
+  startHeartbeat();
+});
+
+// Stop heartbeat before unload
+window.addEventListener("beforeunload", stopHeartbeat);

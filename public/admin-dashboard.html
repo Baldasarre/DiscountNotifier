@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="/admin-dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="header">
+        <h1>🎯 Admin Dashboard</h1>
+        <p>Sistem Monitoring & Yönetim Paneli</p>
+        <div class="nav-links">
+            <a href="/dashboard">← Ana Sayfa</a>
+            <a href="#" id="logoutBtn">Çıkış Yap</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- System Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>CPU Kullanımı</h3>
+                <div class="stat-value" id="cpuUsage">--%</div>
+                <div class="stat-label" id="cpuCores">-- çekirdek</div>
+            </div>
+            <div class="stat-card">
+                <h3>Bellek Kullanımı</h3>
+                <div class="stat-value" id="memoryUsage">-- MB</div>
+                <div class="stat-label" id="memoryDetails">Peak: -- MB</div>
+            </div>
+            <div class="stat-card">
+                <h3>Toplam Ürün</h3>
+                <div class="stat-value" id="totalProducts">--</div>
+                <div class="stat-label">Tüm markalar</div>
+            </div>
+            <div class="stat-card">
+                <h3>İndirimli Ürün</h3>
+                <div class="stat-value" id="onSaleProducts">--</div>
+                <div class="stat-label">Aktif indirimler</div>
+            </div>
+            <div class="stat-card">
+                <h3>Toplam Kullanıcı</h3>
+                <div class="stat-value" id="totalUsers">--</div>
+                <div class="stat-label" id="verifiedUsers">-- doğrulanmış</div>
+            </div>
+            <div class="stat-card">
+                <h3>Anlık Kullanıcı</h3>
+                <div class="stat-value" id="onlineUsers">--</div>
+                <div class="stat-label">Online</div>
+            </div>
+            <div class="stat-card">
+                <h3>Cache HIT RATE</h3>
+                <div class="stat-value" id="cacheHitRate">--%</div>
+                <div class="stat-label" id="cacheStats">--</div>
+            </div>
+            <div class="stat-card">
+                <h3>Ortalama Yanıt</h3>
+                <div class="stat-value" id="avgResponseTime">-- ms</div>
+                <div class="stat-label" id="totalRequests">-- istek</div>
+            </div>
+            <div class="stat-card">
+                <h3>SYSTEME UPTIME</h3>
+                <div class="stat-value" id="uptime">--</div>
+                <div class="stat-label">Çalışma süresi</div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="chart-container">
+            <h2>CPU & Bellek Kullanımı (Gerçek Zamanlı)</h2>
+            <canvas id="systemChart"></canvas>
+        </div>
+
+        <div class="chart-container">
+            <h2>Yanıt Süreleri</h2>
+            <canvas id="responseTimeChart"></canvas>
+        </div>
+
+        <div class="chart-container">
+            <h2>İstek Sayısı</h2>
+            <canvas id="requestRateChart"></canvas>
+        </div>
+
+        <!-- Users Table -->
+        <div class="table-container">
+            <h2>Kullanıcılar</h2>
+            <div class="search-bar">
+                <input type="text" id="userSearch" placeholder="Email ile ara..." />
+            </div>
+            <div class="table-wrapper">
+                <table class="users-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Email</th>
+                            <th>Üyelik Tarihi</th>
+                            <th>Son Giriş</th>
+                            <th>Takip Edilen Ürün</th>
+                            <th>Markalar</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr>
+                            <td colspan="6" class="loading">Kullanıcılar yükleniyor...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <h2>
+                <span class="status-indicator" id="schedulerStatus"></span>
+                Scraper Kontrolü
+            </h2>
+            <div class="button-group">
+                <button class="btn btn-primary" id="toggleSchedulerBtn">
+                    Başlat/Durdur
+                </button>
+                <button class="btn btn-success" id="zaraUpdateBtn">
+                    Zara Güncelle
+                </button>
+                <button class="btn btn-success" id="bershkaUpdateBtn">
+                    Bershka Güncelle
+                </button>
+                <button class="btn btn-success" id="stradivariusUpdateBtn">
+                    Stradivarius Güncelle
+                </button>
+            </div>
+
+            <!-- Progress Section -->
+            <div id="scraperProgress" style="display: none; margin-top: 20px;">
+                <div style="background: #f5f5f5; padding: 20px; border-radius: 8px;">
+                    <h3 id="progressBrand" style="margin-bottom: 15px;">Zara Güncelleniyor...</h3>
+
+                    <div style="margin-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span id="progressStatus">Başlatılıyor...</span>
+                            <span id="progressPercent">0%</span>
+                        </div>
+                        <div style="background: #e0e0e0; height: 25px; border-radius: 12px; overflow: hidden;">
+                            <div id="progressBar" style="background: linear-gradient(90deg, #4CAF50, #45a049); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px;">
+                        <div>
+                            <div style="font-size: 12px; color: #666;">İşlenen Kategori</div>
+                            <div style="font-size: 20px; font-weight: bold;" id="progressFetched">0</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 12px; color: #666;">Kaydedilen Ürün</div>
+                            <div style="font-size: 20px; font-weight: bold;" id="progressSaved">0</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 12px; color: #666;">Geçen Süre</div>
+                            <div style="font-size: 20px; font-weight: bold;" id="progressTime">0s</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cache Controls -->
+        <div class="controls">
+            <h2>Cache Yönetimi</h2>
+            <div class="button-group">
+                <button class="btn btn-warning" onclick="clearCache('products')">
+                    Ürün Cache Temizle
+                </button>
+                <button class="btn btn-warning" onclick="clearCache('images')">
+                    Resim Cache Temizle
+                </button>
+                <button class="btn btn-warning" onclick="clearCache('stats')">
+                    İstatistik Cache Temizle
+                </button>
+                <button class="btn btn-danger" onclick="clearCache('all')">
+                    Tüm Cache Temizle
+                </button>
+                <button class="btn btn-danger" onclick="resetStats()">
+                    İstatistikleri Sıfırla
+                </button>
+            </div>
+        </div>
+
+        <!-- Logs -->
+        <div class="logs-container">
+            <h2>Son Loglar <button class="btn btn-primary" id="refreshLogsBtn" style="float: right;">Yenile</button></h2>
+            <div class="logs" id="logsContainer">
+                <div class="loading">Loglar yükleniyor...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/admin-dashboard.js"></script>
+</body>
+</html>

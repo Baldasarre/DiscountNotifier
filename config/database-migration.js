@@ -1,11 +1,14 @@
 const db = require("./database");
+const { createServiceLogger } = require("../utils/logger");
+
+const logger = createServiceLogger("config");
 
 function addGoogleAuthColumns() {
   return new Promise((resolve, reject) => {
     db.serialize(() => {
       db.all("PRAGMA table_info(users)", (err, columns) => {
         if (err) {
-          console.error("Table info error:", err);
+          logger.error("Table info error:", err);
           return reject(err);
         }
 
@@ -31,29 +34,25 @@ function addGoogleAuthColumns() {
         }
 
         if (migrations.length === 0) {
-          console.log("✅ Tüm Google Auth kolonları zaten mevcut");
+          logger.info("Tüm Google Auth kolonları zaten mevcut");
           return resolve();
         }
 
-        console.log("🔄 Google Auth kolonları ekleniyor...");
+        logger.info("Google Auth kolonları ekleniyor...");
 
         let completed = 0;
         migrations.forEach((migration, index) => {
           db.run(migration, (err) => {
             if (err) {
-              console.error(`Migration ${index + 1} failed:`, err);
+              logger.error(`Migration ${index + 1} failed:`, err);
               return reject(err);
             }
 
             completed++;
-            console.log(
-              `✅ Migration ${index + 1}/${migrations.length} tamamlandı`
-            );
+            logger.info(`Migration ${index + 1}/${migrations.length} tamamlandı`);
 
             if (completed === migrations.length) {
-              console.log(
-                "🎉 Tüm Google Auth migration'ları başarıyla tamamlandı!"
-              );
+              logger.info("Tüm Google Auth migration'ları başarıyla tamamlandı!");
               resolve();
             }
           });
@@ -66,11 +65,11 @@ function addGoogleAuthColumns() {
 if (require.main === module) {
   addGoogleAuthColumns()
     .then(() => {
-      console.log("Database migration completed successfully");
+      logger.info("Database migration completed successfully");
       process.exit(0);
     })
     .catch((error) => {
-      console.error("Database migration failed:", error);
+      logger.error("Database migration failed:", error);
       process.exit(1);
     });
 }

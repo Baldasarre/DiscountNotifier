@@ -1,5 +1,8 @@
 const db = require("../config/database");
 const { setSessionCookie } = require("../utils/helpers");
+const { createServiceLogger } = require("../utils/logger");
+
+const logger = createServiceLogger("middleware");
 
 function authenticate(req, res, next) {
   const sessionId = req.cookies.sessionId;
@@ -13,7 +16,7 @@ function authenticate(req, res, next) {
 
   db.get(sql, [sessionId], (err, user) => {
     if (err) {
-      console.error("Middleware veritabanı hatası:", err.message);
+      logger.error("Middleware veritabanı hatası:", err.message);
       return res
         .status(500)
         .json({ error: "Sunucu tarafında bir hata oluştu." });

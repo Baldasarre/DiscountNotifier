@@ -2,6 +2,15 @@ const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const db = require("./database");
 const { v4: uuidv4 } = require("uuid");
+const { createServiceLogger } = require("../utils/logger");
+
+const logger = createServiceLogger("config");
+
+// Validate required environment variables
+if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_CALLBACK_URL) {
+  logger.error("Missing required Google OAuth credentials");
+  throw new Error("Google OAuth credentials not configured. Please set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_CALLBACK_URL in environment variables.");
+}
 
 passport.use(
   new GoogleStrategy(
@@ -16,12 +25,12 @@ passport.use(
 
         db.get(selectByGoogleId, [profile.id], (err, existingUser) => {
           if (err) {
-            console.error("Database error:", err);
+            logger.error("Database error:", err);
             return done(err, null);
           }
 
           if (existingUser) {
-            console.log("Existing Google user found:", existingUser.email);
+            logger.info("Existing Google user found:", existingUser.email);
             return done(null, existingUser);
           }
 
@@ -30,7 +39,7 @@ passport.use(
 
           db.get(selectByEmail, [email], (err, userWithEmail) => {
             if (err) {
-              console.error("Database error:", err);
+              logger.error("Database error:", err);
               return done(err, null);
             }
 
@@ -46,11 +55,11 @@ passport.use(
 
               db.run(updateSql, updateParams, function (err) {
                 if (err) {
-                  console.error("Database update error:", err);
+                  logger.error("Database update error:", err);
                   return done(err, null);
                 }
 
-                console.log("Updated existing user with Google info:", email);
+                logger.info("Updated existing user with Google info:", email);
 
                 db.get(selectByEmail, [email], (err, updatedUser) => {
                   if (err) return done(err, null);
@@ -73,11 +82,11 @@ passport.use(
 
               db.run(insertSql, insertParams, function (err) {
                 if (err) {
-                  console.error("Database insert error:", err);
+                  logger.error("Database insert error:", err);
                   return done(err, null);
                 }
 
-                console.log("Created new Google user:", email);
+                logger.info(`[CONFIG] Created new Google user: ${email}`);
 
                 db.get(selectByEmail, [email], (err, newUser) => {
                   if (err) return done(err, null);
@@ -88,7 +97,7 @@ passport.use(
           });
         });
       } catch (error) {
-        console.error("Google Strategy error:", error);
+        logger.error("Google Strategy error:", error);
         return done(error, null);
       }
     }
@@ -103,7 +112,7 @@ passport.deserializeUser((id, done) => {
   const sql = `SELECT * FROM users WHERE id = ?`;
   db.get(sql, [id], (err, user) => {
     if (err) {
-      console.error("Passport deserialize error:", err);
+      logger.error("Passport deserialize error:", err);
       return done(err, null);
     }
     done(null, user);

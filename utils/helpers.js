@@ -1,4 +1,7 @@
 const nodemailer = require("nodemailer");
+const { createServiceLogger } = require("./logger");
+
+const logger = createServiceLogger("helpers");
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -15,15 +18,11 @@ function sendEmail(to, code, type = "verify") {
     type === "login" ? "Giriş" : "Doğrulama"
   } kodunuz: ${code}\n\nKod 5 dakika geçerlidir.`;
 
-  console.log(`[DEBUG] E-posta gönderilecek: ${to}`);
-  console.log(`[DEBUG] Kod: ${code}`);
-  console.log(`[DEBUG] Tip: ${type}`);
+  logger.debug("Email will be sent", { to, type, codeLength: code.length });
 
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.log(
-      "⚠️  Email servisi yapılandırılmamış - kod console'da gösteriliyor"
-    );
-    console.log(`📧 ${to} adresine gönderilecek kod: ${code}`);
+    logger.warn("Email service not configured - showing code in console");
+    logger.info(`Code for ${to}: ${code}`);
     return;
   }
 
@@ -36,9 +35,9 @@ function sendEmail(to, code, type = "verify") {
 
   transporter.sendMail(mailOptions, (error, info) => {
     if (error) {
-      console.error("Mail gönderilemedi:", error);
+      logger.error("Email send failed", error);
     } else {
-      console.log("Mail gönderildi:", info.response);
+      logger.info("Email sent successfully", { response: info.response });
     }
   });
 }

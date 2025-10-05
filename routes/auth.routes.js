@@ -1,6 +1,9 @@
 const express = require("express");
 const passport = require("../config/passport");
 const { setSessionCookie } = require("../utils/helpers");
+const { createServiceLogger } = require("../utils/logger");
+
+const logger = createServiceLogger("auth");
 const router = express.Router();
 
 router.get(
@@ -21,28 +24,39 @@ router.get(
       const user = req.user;
 
       if (!user) {
-        console.error("Google auth callback: User not found");
+        logger.error("Google auth callback: User not found");
         return res.redirect("/login?error=user_not_found");
       }
 
       setSessionCookie(res, user.id);
 
-      console.log("Google Auth successful for user:", user.email);
+      // Update lastLoginAt and IP
+      const db = require("../config/database");
+      const updateLoginSql = `UPDATE users SET lastLoginAt = ?, ip = ? WHERE id = ?`;
+      const userIp = req.ip || req.connection.remoteAddress;
+      logger.info(`[USER-LOGIN] Updating IP for user ${user.id}: ${userIp}`);
+      db.run(updateLoginSql, [new Date().toISOString(), userIp, user.id], (err) => {
+        if (err) {
+          logger.error("Failed to update lastLoginAt:", err);
+        } else {
+          logger.info(`[USER-LOGIN] Successfully updated lastLoginAt and IP`);
+        }
+      });
+
+      logger.info(`[USER-LOGIN] Google Auth successful - Email: ${user.email}, ID: ${user.id}, IP: ${req.ip}`);
 
       const hasBrands =
         user.brands && user.brands !== "null" && user.brands !== "[]";
 
       if (user.gender && hasBrands) {
-        console.log("✅ User has complete profile, redirecting to dashboard");
-        res.redirect("/dashboard?auth=google_success");
+        logger.info("User has complete profile, redirecting to dashboard");
+        res.redirect("/dashboard");
       } else {
-        console.log(
-          "⚠️ User profile incomplete, redirecting to category selection"
-        );
-        res.redirect("/category?auth=google_success&first_time=true");
+        logger.info("️ User profile incomplete, redirecting to category selection");
+        res.redirect("/category");
       }
     } catch (error) {
-      console.error("Google callback error:", error);
+      logger.error("Google callback error:", error);
       res.redirect("/login?error=auth_error");
     }
   }
@@ -63,7 +77,7 @@ router.get("/google/status", (req, res) => {
 
   db.get(sql, [sessionId], (err, user) => {
     if (err) {
-      console.error("Google status check error:", err);
+      logger.error("Google status check error:", err);
       return res.status(500).json({
         success: false,
         error: "Database error",

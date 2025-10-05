@@ -1,5 +1,9 @@
 const axios = require("axios");
 const db = require("../config/database");
+const { createServiceLogger } = require("../utils/logger");
+const progressTracker = require("./progress-tracker.service");
+
+const logger = createServiceLogger("zara");
 
 class ZaraService {
   constructor() {
@@ -21,17 +25,15 @@ class ZaraService {
     this.lastRequestTime = 0;
     this.minRequestInterval = 5000;
 
-    // 🐛 Debug initialization
+    //  Debug initialization
     if (this.debugMode) {
-      console.log(
-        `🔧 [ZARA-SERVICE] Initialized with unified DB structure for brand: ${this.brand}`
-      );
+      logger.info(`[ZARA-SERVICE] Initialized with unified DB structure for brand: ${this.brand}`);
     }
   }
 
   async fetchCategoriesFromAPI() {
     try {
-      console.log("🔄 Zara kategorileri API'den çekiliyor...");
+      logger.info("Zara kategorileri API'den çekiliyor...");
 
       const response = await axios.get(this.categoriesApiUrl, {
         headers: {
@@ -47,14 +49,14 @@ class ZaraService {
       if (response.data && response.data.categories) {
         this.categories = this.parseCategoriesFromAPI(response.data.categories);
         this.lastCategoriesUpdate = new Date();
-        console.log(`✅ ${this.categories.length} kategori başarıyla çekildi`);
+        logger.info(`${this.categories.length} kategori başarıyla çekildi`);
         return this.categories;
       } else {
-        console.log("❌ Kategori verisi bulunamadı");
+        logger.error("Kategori verisi bulunamadı");
         return [];
       }
     } catch (error) {
-      console.error("❌ Kategoriler çekilirken hata:", error.message);
+      logger.error("Kategoriler çekilirken hata:", error.message);
       return [];
     }
   }
@@ -62,11 +64,11 @@ class ZaraService {
   parseCategoriesFromAPI(apiCategories) {
     const parsedCategories = [];
 
-    console.log("🔍 API kategorileri parse ediliyor...");
-    console.log("📊 Toplam ana kategori:", apiCategories.length);
+    logger.debug("API kategorileri parse ediliyor...");
+    logger.info(`Toplam ana kategori: ${apiCategories.length}`);
 
     apiCategories.forEach((category, index) => {
-      console.log(`\n📁 Ana kategori ${index + 1}:`, {
+      logger.info(`\nAna kategori ${index + 1}:`, {
         name: category.name,
         sectionName: category.sectionName,
         subcategoriesCount: category.subcategories
@@ -76,7 +78,7 @@ class ZaraService {
 
       if (category.subcategories) {
         category.subcategories.forEach((sub, subIndex) => {
-          console.log(`  📂 Alt kategori ${subIndex + 1}:`, {
+          logger.info(`Alt kategori ${subIndex + 1}:`, {
             name: sub.name,
             redirectCategoryId: sub.redirectCategoryId,
             hasSeo: !!sub.seo,
@@ -95,21 +97,19 @@ class ZaraService {
                 url: `${this.baseUrl}/category/${sub.redirectCategoryId}/products?ajax=true`,
               };
 
-              console.log(`  ✅ Kategori eklendi:`, parsedCategory);
+              logger.info("Kategori eklendi: parsedCategory");
               parsedCategories.push(parsedCategory);
             } else {
-              console.log(`  ❌ Kategori hariç tutuldu (${sub.name})`);
+              logger.error(`Kategori hariç tutuldu (${sub.name})`);
             }
           } else {
-            console.log(`  ⚠️ Kategori atlandı - gerekli alanlar yok`);
+            logger.warn("Kategori atlandı - gerekli alanlar yok");
           }
         });
       }
     });
 
-    console.log(
-      `\n🎯 Toplam parse edilen kategori: ${parsedCategories.length}`
-    );
+    logger.info(`\n Toplam parse edilen kategori: ${parsedCategories.length}`);
     return parsedCategories;
   }
 
@@ -137,18 +137,14 @@ class ZaraService {
 
   async saveCategoriesToDatabase() {
     if (!this.categories || this.categories.length === 0) {
-      console.log("⚠️ Kaydedilecek kategori yok");
+      logger.warn("Kaydedilecek kategori yok");
       return;
     }
 
-    console.log(
-      `💾 ${this.categories.length} kategori veritabanına kaydediliyor...`
-    );
-    console.log("🔍 İlk 3 kategori örneği:");
+    logger.info(`${this.categories.length} kategori veritabanına kaydediliyor...`);
+    logger.debug("İlk 3 kategori örneği:");
     this.categories.slice(0, 3).forEach((cat, index) => {
-      console.log(
-        `  ${index + 1}. ${cat.name} (${cat.id}) -> ${cat.redirect_category_id}`
-      );
+      logger.info(`${index + 1}. ${cat.name} (${cat.id}) -> ${cat.redirect_category_id}`);
     });
 
     const stmt = db.prepare(`
@@ -164,7 +160,7 @@ class ZaraService {
       this.categories.forEach((category, index) => {
         const gender = this.mapSectionToGender(category.section);
 
-        console.log(`📝 Kategori ${index + 1} kaydediliyor:`, {
+        logger.info(`Kategori ${index + 1} kaydediliyor:`, {
           id: category.id,
           name: category.name,
           gender: gender,
@@ -184,11 +180,9 @@ class ZaraService {
 
       db.run("COMMIT", (err) => {
         if (err) {
-          console.error("❌ Kategoriler kaydedilirken hata:", err);
+          logger.error("Kategoriler kaydedilirken hata:", err);
         } else {
-          console.log(
-            `✅ ${this.categories.length} kategori başarıyla kaydedildi`
-          );
+          logger.info(`${this.categories.length} kategori başarıyla kaydedildi`);
         }
       });
     });
@@ -216,7 +210,7 @@ class ZaraService {
 
     if (timeSinceLastRequest < this.minRequestInterval) {
       const waitTime = this.minRequestInterval - timeSinceLastRequest;
-      console.log(`⏳ Rate limiting: ${waitTime}ms bekleniyor...`);
+      logger.info(`Rate limiting: ${waitTime}ms bekleniyor...`);
       await this.delay(waitTime);
     }
 
@@ -228,7 +222,7 @@ class ZaraService {
 
   async fetchMenProducts() {
     try {
-      console.log("🔄 Erkek ürünleri tek API'den çekiliyor...");
+      logger.info("Erkek ürünleri tek API'den çekiliyor...");
 
       await this.waitForRateLimit();
 
@@ -244,7 +238,7 @@ class ZaraService {
         timeout: 30000,
       });
 
-      console.log(`✅ Erkek API yanıtı alındı - Status: ${response.status}`);
+      logger.info(`Erkek API yanıtı alındı - Status: ${response.status}`);
 
       if (response.data && response.data.productGroups) {
         const products = this.parseProductData(response.data, {
@@ -252,14 +246,14 @@ class ZaraService {
           section_name: "ERKEK",
           name: "Erkek Giyim",
         });
-        console.log(`✅ ${products.length} adet erkek ürünü başarıyla çekildi`);
+        logger.info(`${products.length} adet erkek ürünü başarıyla çekildi`);
         return products;
       } else {
-        console.log("❌ Geçersiz erkek API yanıtı");
+        logger.error("Geçersiz erkek API yanıtı");
         return [];
       }
     } catch (error) {
-      console.error("❌ Erkek ürünleri çekilirken hata:", error.message);
+      logger.error("Erkek ürünleri çekilirken hata:", error.message);
       return [];
     }
   }
@@ -277,21 +271,19 @@ class ZaraService {
       }
 
       if (!category) {
-        console.error(`❌ Kategori bulunamadı: ${categoryId}`);
+        logger.error(`Kategori bulunamadı: ${categoryId}`);
         return [];
       }
     } else {
       category = this.categories[0];
       if (!category) {
-        console.error("❌ Hiç kategori bulunamadı");
+        logger.error("Hiç kategori bulunamadı");
         return [];
       }
     }
 
     try {
-      console.log(
-        `🔄 Zara ürünleri çekiliyor... (${category.section_name} - ${category.name})`
-      );
+      logger.info(`Zara ürünleri çekiliyor... (${category.section_name} - ${category.name})`);
 
       await this.waitForRateLimit();
 
@@ -307,29 +299,25 @@ class ZaraService {
         timeout: 30000,
       });
 
-      console.log(`✅ API yanıtı alındı - Status: ${response.status}`);
+      logger.info(`API yanıtı alındı - Status: ${response.status}`);
 
       if (response.data && response.data.productGroups) {
         const products = this.parseProductData(response.data, category);
-        console.log(
-          `✅ ${products.length} adet ürün başarıyla çekildi (${category.name})`
-        );
+        logger.info(`${products.length} adet ürün başarıyla çekildi (${category.name})`);
         return products;
       } else {
-        console.log("❌ Geçersiz API yanıtı");
+        logger.error("Geçersiz API yanıtı");
         return [];
       }
     } catch (error) {
-      console.error(`❌ Ürünler çekilirken hata:`, error.message);
+      logger.error("Ürünler çekilirken hata:", error.message);
       return [];
     }
   }
 
   async fetchProductsWithCategory(category) {
     try {
-      console.log(
-        `🔄 Zara ürünleri çekiliyor... (${category.section_name} - ${category.name})`
-      );
+      logger.info(`Zara ürünleri çekiliyor... (${category.section_name} - ${category.name})`);
 
       await this.waitForRateLimit();
 
@@ -345,20 +333,18 @@ class ZaraService {
         timeout: 30000,
       });
 
-      console.log(`✅ API yanıtı alındı - Status: ${response.status}`);
+      logger.info("API yanıtı alındı - Status: ${response.status}");
 
       if (response.data && response.data.productGroups) {
         const products = this.parseProductData(response.data, category);
-        console.log(
-          `✅ ${products.length} adet ürün başarıyla çekildi (${category.name})`
-        );
+        logger.info(`${products.length} adet ürün başarıyla çekildi (${category.name})`);
         return products;
       } else {
-        console.log("❌ Geçersiz API yanıtı");
+        logger.error("Geçersiz API yanıtı");
         return [];
       }
     } catch (error) {
-      console.error(`❌ Ürünler çekilirken hata:`, error.message);
+      logger.error("Ürünler çekilirken hata:", error.message);
       return [];
     }
   }
@@ -408,10 +394,15 @@ class ZaraService {
 
       const imageUrl = this.getImageUrl(color);
 
+      // display_reference formatı: 4592/217/401 (base reference + color id)
+      const displayReference = component.detail.displayReference
+        ? `${component.detail.displayReference}/${color.id}`
+        : null;
+
       return {
         product_id: component.id.toString(),
         reference: component.reference,
-        display_reference: component.detail.displayReference,
+        display_reference: displayReference,
         name: component.name,
         description: component.description || "",
         price: color.price || component.price,
@@ -440,7 +431,7 @@ class ZaraService {
         last_updated: new Date().toISOString(),
       };
     } catch (error) {
-      console.error("Ürün objesi oluşturulurken hata:", error);
+      logger.error("Ürün objesi oluşturulurken hata:", error);
       return null;
     }
   }
@@ -462,7 +453,7 @@ class ZaraService {
       }
       return "";
     } catch (error) {
-      console.log("⚠️ Image URL alınamadı:", error.message);
+      logger.warn("Image URL alınamadı:", error.message);
       return "";
     }
   }
@@ -470,27 +461,25 @@ class ZaraService {
   async saveProductsToDatabase(products) {
     if (!products || products.length === 0) {
       if (this.debugMode) {
-        console.log(
-          `🔧 [ZARA-SERVICE] saveProductsToDatabase: No products to save`
-        );
+        logger.info(`[ZARA-SERVICE] saveProductsToDatabase: No products to save`);
       }
       return;
     }
 
-    console.log(
-      `💾 [ZARA-SERVICE] ${products.length} ürün unified database'e kaydediliyor...`
-    );
+    logger.info(`[ZARA-SERVICE] ${products.length} ürün zara_products tablosuna kaydediliyor...`);
 
     if (this.debugMode) {
-      console.log(`🔧 [ZARA-SERVICE] First product sample:`, products[0]);
+      logger.info("[ZARA-SERVICE] First product sample:", products[0]);
     }
 
-    // 🔧 UNIFIED DB STRUCTURE: products_unified table
     const stmt = db.prepare(`
-            INSERT OR REPLACE INTO products_unified (
-                brand, product_id, name, price, sale_price, currency, 
-                image_url, product_url, availability, brand_data, last_updated
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT OR REPLACE INTO zara_products (
+                product_id, reference, display_reference, name, description, price,
+                section, section_name, category_id, category_name, brand_code,
+                seo_keyword, seo_product_id, main_color_hex, num_additional_colors,
+                availability, image_url, product_url, grid_position, family_name,
+                subfamily_name, color_id, color_name, is_on_sale, sale_price, last_updated
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
     db.serialize(() => {
@@ -499,79 +488,62 @@ class ZaraService {
       let processedCount = 0;
       products.forEach((product) => {
         try {
-          const brandData = {
-            reference: product.reference,
-            display_reference: product.display_reference,
-            description: product.description,
-            section: product.section,
-            section_name: product.section_name,
-            category_id: product.category_id,
-            category_name: product.category_name,
-            brand_code: product.brand_code,
-            seo_keyword: product.seo_keyword,
-            seo_product_id: product.seo_product_id,
-            main_color_hex: product.main_color_hex,
-            num_additional_colors: product.num_additional_colors,
-            grid_position: product.grid_position,
-            family_name: product.family_name,
-            subfamily_name: product.subfamily_name,
-          };
-
           stmt.run([
-            this.brand, // brand = 'zara'
-            product.product_id, // product_id
-            product.name, // name
-            product.price, // price (in cents)
-            product.sale_price || null, // sale_price (in cents)
-            "TL", // currency
-            product.image_url, // image_url
-            product.product_url, // product_url
-            product.availability || "unknown", // availability
-            JSON.stringify(brandData), // brand_data (JSON)
-            new Date().toISOString(), // last_updated
+            product.product_id,
+            product.reference,
+            product.display_reference,
+            product.name,
+            product.description || "",
+            product.price,
+            product.section,
+            product.section_name,
+            product.category_id,
+            product.category_name,
+            product.brand_code || "zara",
+            product.seo_keyword,
+            product.seo_product_id,
+            product.main_color_hex,
+            product.num_additional_colors || 0,
+            product.availability || "unknown",
+            product.image_url,
+            product.product_url,
+            product.grid_position,
+            product.family_name,
+            product.subfamily_name,
+            product.color_id,
+            product.color_name,
+            product.is_on_sale || 0,
+            product.sale_price || null,
+            new Date().toISOString(),
           ]);
 
           processedCount++;
 
           if (processedCount % 100 === 0) {
-            console.log(
-              `📊 [ZARA-SERVICE] ${processedCount}/${products.length} ürün işlendi...`
-            );
+            logger.info(`[ZARA-SERVICE] ${processedCount}/${products.length} ürün işlendi...`);
           }
 
           if (this.debugMode && processedCount <= 3) {
-            console.log(
-              `🔧 [ZARA-SERVICE] Processed product ${processedCount}:`,
-              {
-                product_id: product.product_id,
-                name: product.name,
-                price: product.price,
-                brand_data_keys: Object.keys(brandData),
-              }
-            );
+            logger.info(`[ZARA-SERVICE] Processed product ${processedCount}:`, {
+              product_id: product.product_id,
+              name: product.name,
+              price: product.price,
+              display_reference: product.display_reference,
+              color_id: product.color_id,
+            });
           }
         } catch (error) {
-          console.error(
-            `❌ [ZARA-SERVICE] Error processing product ${product.product_id}:`,
-            error
-          );
+          logger.error(`[ZARA-SERVICE] Error processing product ${product.product_id}:`, error);
         }
       });
 
       db.run("COMMIT", (err) => {
         if (err) {
-          console.error(
-            `❌ [ZARA-SERVICE] Ürünler unified DB'ye kaydedilirken hata:`,
-            err
-          );
+          logger.error(`[ZARA-SERVICE] Ürünler zara_products tablosuna kaydedilirken hata:`, err);
         } else {
-          console.log(
-            `✅ [ZARA-SERVICE] ${processedCount} ürün başarıyla products_unified tablosuna kaydedildi`
-          );
+          logger.info(`[ZARA-SERVICE] ${processedCount} ürün başarıyla zara_products tablosuna kaydedildi`);
           if (this.debugMode) {
-            console.log(
-              `🔧 [ZARA-SERVICE] Transaction completed successfully for brand: ${this.brand}`
-            );
+            logger.info(`[ZARA-SERVICE] Transaction completed successfully for brand: ${this.brand}`);
           }
         }
       });
@@ -583,36 +555,33 @@ class ZaraService {
   async getProductsFromDatabase(limit = 50, offset = 0, filters = {}) {
     return new Promise((resolve, reject) => {
       if (this.debugMode) {
-        console.log(`🔧 [ZARA-SERVICE] getProductsFromDatabase called with:`, {
+        logger.info("[ZARA-SERVICE] getProductsFromDatabase called with:", {
           limit,
           offset,
           filters,
         });
       }
 
-      let query = `
-                SELECT * FROM products_unified 
-                WHERE brand = ?
-            `;
-      const params = [this.brand];
+      let query = `SELECT * FROM zara_products WHERE 1=1`;
+      const params = [];
 
       if (filters.gender) {
-        query += ` AND JSON_EXTRACT(brand_data, '$.section_name') = ?`;
+        query += ` AND section_name = ?`;
         params.push(filters.gender.toUpperCase());
       }
 
       if (filters.category_id) {
-        query += ` AND JSON_EXTRACT(brand_data, '$.category_id') = ?`;
+        query += ` AND category_id = ?`;
         params.push(filters.category_id);
       }
 
       if (filters.category_name) {
-        query += ` AND JSON_EXTRACT(brand_data, '$.category_name') LIKE ?`;
+        query += ` AND category_name LIKE ?`;
         params.push(`%${filters.category_name}%`);
       }
 
       if (filters.search) {
-        query += ` AND (name LIKE ? OR JSON_EXTRACT(brand_data, '$.description') LIKE ?)`;
+        query += ` AND (name LIKE ? OR description LIKE ?)`;
         params.push(`%${filters.search}%`, `%${filters.search}%`);
       }
 
@@ -625,31 +594,24 @@ class ZaraService {
       params.push(limit, offset);
 
       if (this.debugMode) {
-        console.log(`🔧 [ZARA-SERVICE] Executing query:`, query);
-        console.log(`🔧 [ZARA-SERVICE] Query params:`, params);
+        logger.info("[ZARA-SERVICE] Executing query:", query);
+        logger.info("[ZARA-SERVICE] Query params:", params);
       }
 
       db.all(query, params, (err, rows) => {
         if (err) {
-          console.error(
-            `❌ [ZARA-SERVICE] getProductsFromDatabase error:`,
-            err
-          );
+          logger.error(`[ZARA-SERVICE] getProductsFromDatabase error:`, err);
           reject(err);
         } else {
           if (this.debugMode) {
-            console.log(
-              `🔧 [ZARA-SERVICE] Retrieved ${rows.length} products from unified DB`
-            );
+            logger.info(`[ZARA-SERVICE] Retrieved ${rows.length} products from zara_products`);
             if (rows.length > 0) {
-              console.log(`🔧 [ZARA-SERVICE] First product sample:`, {
+              logger.info("[ZARA-SERVICE] First product sample:", {
                 id: rows[0].id,
                 product_id: rows[0].product_id,
                 name: rows[0].name,
-                brand: rows[0].brand,
-                brand_data_keys: rows[0].brand_data
-                  ? Object.keys(JSON.parse(rows[0].brand_data))
-                  : [],
+                display_reference: rows[0].display_reference,
+                color_id: rows[0].color_id,
               });
             }
           }
@@ -684,37 +646,32 @@ class ZaraService {
   async getProductById(productId) {
     return new Promise((resolve, reject) => {
       if (this.debugMode) {
-        console.log(
-          `🔧 [ZARA-SERVICE] getProductById called with productId: ${productId}`
-        );
+        logger.info(`[ZARA-SERVICE] getProductById called with productId: ${productId}`);
       }
 
-      const query =
-        "SELECT * FROM products_unified WHERE brand = ? AND product_id = ?";
-      const params = [this.brand, productId];
+      const query = "SELECT * FROM zara_products WHERE product_id = ?";
+      const params = [productId];
 
       if (this.debugMode) {
-        console.log(`🔧 [ZARA-SERVICE] Query:`, query);
-        console.log(`🔧 [ZARA-SERVICE] Params:`, params);
+        logger.info("[ZARA-SERVICE] Query:", query);
+        logger.info("[ZARA-SERVICE] Params:", params);
       }
 
       db.get(query, params, (err, row) => {
         if (err) {
-          console.error(`❌ [ZARA-SERVICE] getProductById error:`, err);
+          logger.error("[ZARA-SERVICE] getProductById error:", err);
           reject(err);
         } else {
           if (this.debugMode) {
-            console.log(
-              `🔧 [ZARA-SERVICE] getProductById result:`,
+            logger.info(`[ZARA-SERVICE] getProductById result:`,
               row
                 ? {
                     id: row.id,
                     product_id: row.product_id,
                     name: row.name,
-                    brand: row.brand,
+                    display_reference: row.display_reference,
                   }
-                : "No product found"
-            );
+                : "No product found");
           }
           resolve(row);
         }
@@ -755,31 +712,29 @@ class ZaraService {
 
   async checkForNewProducts() {
     try {
-      console.log("🔍 Yeni ürün kontrolü başlatılıyor...");
+      logger.debug("Yeni ürün kontrolü başlatılıyor...");
 
       const currentProductCount = await this.getCurrentProductCount();
-      console.log(`📊 Mevcut ürün sayısı: ${currentProductCount}`);
+      logger.info(`Mevcut ürün sayısı: ${currentProductCount}`);
 
       const newMenProductCount = await this.getQuickProductCount();
-      console.log(`📊 API'den gelen erkek ürün sayısı: ${newMenProductCount}`);
+      logger.info(`API den gelen erkek ürün sayısı: ${newMenProductCount}`);
 
       const difference = Math.abs(
         newMenProductCount - currentProductCount * 0.4
       );
       const threshold = currentProductCount * 0.05;
 
-      console.log(`📊 Fark: ${difference}, Eşik: ${threshold}`);
+      logger.info(`Fark: ${difference}, Eşik: ${threshold}`);
 
       const hasNewProducts = difference > threshold;
-      console.log(
-        `🔍 Yeni ürün kontrolü sonucu: ${
+      logger.info(`Yeni ürün kontrolü sonucu: ${
           hasNewProducts ? "YENİ ÜRÜN VAR" : "YENİ ÜRÜN YOK"
-        }`
-      );
+        }`);
 
       return hasNewProducts;
     } catch (error) {
-      console.error("❌ Yeni ürün kontrolünde hata:", error);
+      logger.error("Yeni ürün kontrolünde hata:", error);
       return true;
     }
   }
@@ -787,23 +742,19 @@ class ZaraService {
   async getCurrentProductCount() {
     return new Promise((resolve, reject) => {
       if (this.debugMode) {
-        console.log(`🔧 [ZARA-SERVICE] getCurrentProductCount called`);
+        logger.info("[ZARA-SERVICE] getCurrentProductCount called");
       }
 
-      const query =
-        "SELECT COUNT(*) as count FROM products_unified WHERE brand = ?";
-      const params = [this.brand];
+      const query = "SELECT COUNT(*) as count FROM zara_products";
 
-      db.get(query, params, (err, row) => {
+      db.get(query, [], (err, row) => {
         if (err) {
-          console.error(`❌ [ZARA-SERVICE] getCurrentProductCount error:`, err);
+          logger.error("[ZARA-SERVICE] getCurrentProductCount error:", err);
           reject(err);
         } else {
           const count = row.count || 0;
           if (this.debugMode) {
-            console.log(
-              `🔧 [ZARA-SERVICE] Current ${this.brand} product count: ${count}`
-            );
+            logger.info(`[ZARA-SERVICE] Current ${this.brand} product count: ${count}`);
           }
           resolve(count);
         }
@@ -850,20 +801,36 @@ class ZaraService {
       }
       return 0;
     } catch (error) {
-      console.error("❌ Hızlı ürün sayısı kontrolünde hata:", error);
+      logger.error("Hızlı ürün sayısı kontrolünde hata:", error);
       return 0;
     }
   }
 
-  async fetchAndSaveAllProducts(forceUpdate = false) {
+  async fetchAndSaveAllProducts(forceUpdate = false, jobId = null) {
     try {
-      console.log("🚀 Zara ürün güncellemesi başlatılıyor...");
+      logger.info(`Zara ürün güncellemesi başlatılıyor... (jobId: ${jobId})`);
 
       if (forceUpdate) {
-        console.log("🔄 Zorla güncelleme yapılıyor...");
+        logger.info("🔄 Zorla güncelleme yapılıyor...");
       }
 
-      console.log("\n1️⃣ Erkek ürünleri tek API'den çekiliyor...");
+      // Start progress tracking
+      if (jobId) {
+        logger.info(`📊 Progress tracking başlatılıyor - jobId: ${jobId}`);
+        await this.fetchCategoriesFromAPI();
+        const totalCategories = this.categories.length + 1; // +1 for men products
+        logger.info(`📋 Toplam ${totalCategories} kategori bulundu`);
+        progressTracker.startJob(jobId, totalCategories);
+        logger.info(`✅ Progress tracker başlatıldı`);
+      } else {
+        logger.warn('⚠️  jobId yok - progress tracking devre dışı');
+      }
+
+      logger.info("\n1️⃣ Erkek ürünleri tek API'den çekiliyor...");
+      if (jobId) {
+        progressTracker.setCurrentCategory(jobId, 'Erkek Ürünleri');
+      }
+
       const menProducts = await this.fetchMenProducts();
       if (menProducts.length > 0) {
         await this.saveProductsToDatabase(menProducts);
@@ -871,39 +838,49 @@ class ZaraService {
           "zara_men_all_products",
           this.getNextUpdateTime()
         );
-        console.log(`✅ ${menProducts.length} erkek ürünü kaydedildi`);
+        logger.info(`${menProducts.length} erkek ürünü kaydedildi`);
+
+        if (jobId) {
+          progressTracker.incrementProcessed(jobId);
+          progressTracker.incrementSaved(jobId, menProducts.length);
+        }
       } else {
-        console.log("⚠️ Erkek ürünü bulunamadı");
+        logger.warn("Erkek ürünü bulunamadı");
       }
 
       const betweenSectionsDelay = Math.floor(Math.random() * 10000) + 5000;
-      console.log(`⏳ Bölümler arası bekleme: ${betweenSectionsDelay}ms`);
+      logger.info(`Bölümler arası bekleme: ${betweenSectionsDelay}ms`);
       await this.delay(betweenSectionsDelay);
 
-      console.log("\n2️⃣ Diğer kategoriler API'den çekiliyor...");
-      await this.fetchCategoriesFromAPI();
+      logger.info("\n2️⃣ Diğer kategoriler API'den çekiliyor...");
+      if (!this.categories || this.categories.length === 0) {
+        await this.fetchCategoriesFromAPI();
+      }
 
       if (this.categories.length === 0) {
-        console.log("❌ Hiç kategori bulunamadı");
+        logger.error("Hiç kategori bulunamadı");
+        if (jobId) {
+          progressTracker.failJob(jobId, new Error('Hiç kategori bulunamadı'));
+        }
         return false;
       }
 
       await this.saveCategoriesToDatabase();
 
-      console.log(
-        `📊 ${this.categories.length} kategoriden ürünler çekilecek...`
-      );
+      logger.info(`${this.categories.length} kategoriden ürünler çekilecek...`);
 
       let totalOtherProducts = 0;
       let processedCategories = 0;
 
       for (let i = 0; i < this.categories.length; i++) {
         const category = this.categories[i];
-        console.log(
-          `\n🔄 Kategori işleniyor: ${category.section_name} - ${
+        logger.info(`\n📦 Kategori işleniyor: ${category.section_name} - ${
             category.name
-          } (${i + 1}/${this.categories.length})`
-        );
+          } (${i + 1}/${this.categories.length})`);
+
+        if (jobId) {
+          progressTracker.setCurrentCategory(jobId, `${category.section_name} - ${category.name}`);
+        }
 
         try {
           const products = await this.fetchProducts(category.id);
@@ -913,39 +890,40 @@ class ZaraService {
               `zara_${category.section.toLowerCase()}_${category.id}`,
               this.getNextUpdateTime()
             );
-            console.log(
-              `✅ ${products.length} ürün kaydedildi (${category.name})`
-            );
+            logger.info(`${products.length} ürün kaydedildi (${category.name})`);
             totalOtherProducts += products.length;
             processedCategories++;
+
+            if (jobId) {
+              progressTracker.incrementProcessed(jobId);
+              progressTracker.incrementSaved(jobId, products.length);
+            }
           } else {
-            console.log(`⚠️ ${category.name} kategorisinde ürün bulunamadı`);
+            logger.warn(`${category.name} kategorisinde ürün bulunamadı`);
           }
 
           if (i < this.categories.length - 1) {
             const categoryDelay = Math.floor(Math.random() * 5000) + 3000;
-            console.log(
-              `⏳ Sonraki kategori için ${categoryDelay}ms bekleniyor...`
-            );
+            logger.info(`⏳ Sonraki kategori için ${categoryDelay}ms bekleniyor...`);
             await this.delay(categoryDelay);
           }
         } catch (error) {
-          console.error(
-            `❌ ${category.name} kategorisi işlenirken hata:`,
-            error.message
-          );
+          logger.error(`❌ ${category.name} kategorisi işlenirken hata:`,
+            error.message);
           continue;
         }
       }
 
       const totalProducts = (menProducts?.length || 0) + totalOtherProducts;
-      console.log(`🎉 Tüm Zara ürünleri başarıyla güncellendi!`);
-      console.log(`📊 Toplam kaydedilen ürün: ${totalProducts}`);
-      console.log(`📊 Erkek ürünleri: ${menProducts?.length || 0}`);
-      console.log(`📊 Diğer kategoriler: ${totalOtherProducts}`);
-      console.log(
-        `📊 İşlenen kategori: ${processedCategories}/${this.categories.length}`
-      );
+      logger.info("✅ Tüm Zara ürünleri başarıyla güncellendi!");
+      logger.info(`📊 Toplam kaydedilen ürün: ${totalProducts}`);
+      logger.info(`👔 Erkek ürünleri: ${menProducts?.length || 0}`);
+      logger.info(`🛍️ Diğer kategoriler: ${totalOtherProducts}`);
+      logger.info(`✔️ İşlenen kategori: ${processedCategories}/${this.categories.length}`);
+
+      if (jobId) {
+        progressTracker.completeJob(jobId, totalProducts);
+      }
 
       await this.updateLastUpdateTime();
 
@@ -956,7 +934,7 @@ class ZaraService {
         otherProducts: totalOtherProducts,
       };
     } catch (error) {
-      console.error("❌ Zara ürünleri güncellenirken hata:", error);
+      logger.error("Zara ürünleri güncellenirken hata:", error);
 
       const errorNextUpdate = new Date();
       errorNextUpdate.setMinutes(errorNextUpdate.getMinutes() + 30);
@@ -974,7 +952,7 @@ class ZaraService {
       const metadata = await this.getCacheMetadata("zara_all_products");
       return metadata ? metadata.last_updated : null;
     } catch (error) {
-      console.log("⚠️ Son güncelleme zamanı alınamadı:", error.message);
+      logger.warn("Son güncelleme zamanı alınamadı:", error.message);
       return null;
     }
   }
@@ -985,9 +963,9 @@ class ZaraService {
         "zara_all_products",
         this.getNextUpdateTime()
       );
-      console.log("✅ Son güncelleme zamanı kaydedildi");
+      logger.info("Son güncelleme zamanı kaydedildi");
     } catch (error) {
-      console.log("⚠️ Son güncelleme zamanı kaydedilemedi:", error.message);
+      logger.warn("Son güncelleme zamanı kaydedilemedi:", error.message);
     }
   }
 
@@ -1008,11 +986,9 @@ class ZaraService {
     const nextUpdate = new Date();
     nextUpdate.setMinutes(nextUpdate.getMinutes() + randomMinutes);
 
-    console.log(
-      `⏰ Sonraki güncelleme: ${randomMinutes} dakika sonra (${nextUpdate.toLocaleString(
+    logger.info(`⏰ Sonraki güncelleme: ${randomMinutes} dakika sonra (${nextUpdate.toLocaleString(
         "tr-TR"
-      )})`
-    );
+      )})`);
 
     return nextUpdate.toISOString();
   }
@@ -1022,4 +998,63 @@ class ZaraService {
   }
 }
 
-module.exports = new ZaraService();
+const zaraServiceInstance = new ZaraService();
+module.exports = zaraServiceInstance;
+
+// CLI support
+if (require.main === module) {
+  const arg = process.argv[2];
+
+  if (arg === "categories") {
+    logger.info("Zara kategorileri çekiliyor...");
+    zaraServiceInstance
+      .fetchCategoriesFromAPI()
+      .then((categories) => {
+        logger.info(`${categories.length} kategori çekildi.`);
+        return zaraServiceInstance.saveCategoriesToDatabase();
+      })
+      .then(() => {
+        logger.info("Zara kategorileri kaydedildi.");
+        process.exit(0);
+      })
+      .catch((error) => {
+        logger.error("Zara kategori tarama hatası:", error);
+        process.exit(1);
+      });
+  } else if (arg === "products") {
+    logger.info("Zara ürünleri çekiliyor (sadece erkek)...");
+    zaraServiceInstance
+      .fetchMenProducts()
+      .then((products) => {
+        logger.info(`${products.length} erkek ürünü çekildi.`);
+        return zaraServiceInstance.saveProductsToDatabase(products);
+      })
+      .then(() => {
+        logger.info("Zara erkek ürünleri kaydedildi.");
+        process.exit(0);
+      })
+      .catch((error) => {
+        logger.error("Zara ürün tarama hatası:", error);
+        process.exit(1);
+      });
+  } else if (arg === "all") {
+    logger.info("Zara tam veri tarama başlatılıyor (tüm kategoriler)...");
+    zaraServiceInstance
+      .fetchAndSaveAllProducts(true)
+      .then((result) => {
+        logger.info("Zara tam veri tarama tamamlandı.");
+        logger.info(`Toplam ${result.totalProducts} ürün kaydedildi.`);
+        process.exit(0);
+      })
+      .catch((error) => {
+        logger.error("Zara tarama hatası:", error);
+        process.exit(1);
+      });
+  } else {
+    logger.info("Kullanım: node services/zara.service.js [categories|products|all]");
+    logger.info("  categories - Sadece kategorileri çek ve kaydet");
+    logger.info("  products   - Sadece erkek ürünlerini çek ve kaydet");
+    logger.info("  all        - Tüm kategorilerden tüm ürünleri çek ve kaydet");
+    process.exit(0);
+  }
+}

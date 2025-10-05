@@ -7,6 +7,10 @@ const {
   generateCode,
   setSessionCookie,
 } = require("../utils/helpers");
+const { createServiceLogger } = require("../utils/logger");
+const monitoringService = require("../services/monitoring.service");
+
+const logger = createServiceLogger("user");
 const router = express.Router();
 
 router.post("/save", (req, res) => {
@@ -49,15 +53,15 @@ router.post("/save", (req, res) => {
       db.serialize(() => {
         db.run(updateSql, [code, now, email], function (err) {
           if (err) {
-            console.log("Database update error:", err.message);
+            logger.error("Database update error:", err);
             return res
               .status(500)
-              .json({ error: `Kullanıcı güncellenemedi: ${err.message}` });
+              .json({ error: "Kullanıcı güncellenemedi" });
           }
 
           if (this.changes === 0) {
             if (process.env.NODE_ENV === "development") {
-              console.error("No rows updated - user might not exist");
+              logger.error("No rows updated - user might not exist");
             }
             return res.status(404).json({ error: "Kullanıcı bulunamadı" });
           }
@@ -66,7 +70,7 @@ router.post("/save", (req, res) => {
             ? "Giriş için kod gönderildi."
             : "Doğrulama için kod gönderildi.";
           if (process.env.NODE_ENV === "development") {
-            console.log("Sending email to:", email, "Code:", code);
+            logger.info("Sending email to:", email, "Code:", code);
           }
           sendEmail(email, code, user.verified ? "login" : "verify");
           res.json({ success: true, message });
@@ -104,8 +108,9 @@ router.post("/verify-code", (req, res) => {
         .json({ error: `Kod hatalı. Kalan deneme: ${4 - user.attempts}` });
     }
 
-    const updateSql = `UPDATE users SET verified = 1, lastLoginAt = ?, code = NULL, codeSentAt = NULL, attempts = 0 WHERE email = ?`;
-    db.run(updateSql, [new Date().toISOString(), email], function (err) {
+    const updateSql = `UPDATE users SET verified = 1, lastLoginAt = ?, ip = ?, code = NULL, codeSentAt = NULL, attempts = 0 WHERE email = ?`;
+    const userIp = req.ip || req.connection.remoteAddress;
+    db.run(updateSql, [new Date().toISOString(), userIp, email], function (err) {
       if (err)
         return res.status(500).json({ error: "Doğrulama sırasında hata." });
 
@@ -150,6 +155,36 @@ router.get("/check-session", (req, res) => {
 
     return res.json({ loggedIn: true, email: user.email });
   });
+});
+
+/**
+ * Logout endpoint - removes user from active users
+ */
+router.post("/logout", authenticate, (req, res) => {
+  const userId = req.user.id;
+
+  // Remove from active users
+  monitoringService.removeUser(userId);
+
+  // Clear session cookie
+  res.clearCookie("session");
+
+  logger.info(`[USER-LOGOUT] User logged out - ID: ${userId}, IP: ${req.ip}`);
+
+  res.json({ success: true, message: "Çıkış yapıldı" });
+});
+
+/**
+ * Heartbeat endpoint - keeps user active
+ * Frontend should call this every 30 seconds
+ */
+router.post("/heartbeat", authenticate, (req, res) => {
+  const userId = req.user.id;
+
+  // Update user activity
+  monitoringService.recordUserActivity(userId);
+
+  res.json({ success: true, online: true });
 });
 
 module.exports = router;

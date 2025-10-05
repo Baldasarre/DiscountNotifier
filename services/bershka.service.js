@@ -1,7 +1,11 @@
 const axios = require("axios");
 const fs = require("fs");
 const db = require("../config/database");
+const { dbManager } = require("../config/database");
 const config = require("../config/bershka.config");
+const { createServiceLogger } = require("../utils/logger");
+
+const logger = createServiceLogger("bershka");
 
 class BershkaService {
   constructor() {
@@ -28,7 +32,7 @@ class BershkaService {
   }
 
   initializeTables() {
-    console.log("🔧 [BERSHKA-SERVICE] Creating Bershka database tables...");
+    logger.info("Creating Bershka database tables...");
 
     const tables = [
       {
@@ -82,9 +86,9 @@ class BershkaService {
     tables.forEach((table) => {
       db.run(table.sql, (err) => {
         if (err) {
-          console.error(`❌ Error creating ${table.name} table:`, err.message);
+          logger.error(`Error creating ${table.name} table:`, err.message);
         } else {
-          console.log(`✅ ${table.name} table created successfully`);
+          logger.info(`${table.name} table created successfully`);
         }
       });
     });
@@ -100,9 +104,9 @@ class BershkaService {
     indexes.forEach((indexSql) => {
       db.run(indexSql, (err) => {
         if (err) {
-          console.error("❌ Error creating index:", err.message);
+          logger.error("Error creating index:", err.message);
         } else {
-          console.log("✅ Index created successfully");
+          logger.info("Index created successfully");
         }
       });
     });
@@ -128,12 +132,12 @@ class BershkaService {
       }
 
       const testData = JSON.parse(fs.readFileSync(testDataPath, "utf8"));
-      console.log("✅ Test verisi başarıyla okundu");
+      logger.info("Test verisi başarıyla okundu");
 
       const categories = this.extractCategoriesFromData(testData);
       return categories;
     } catch (error) {
-      console.error("❌ Dosyadan kategori okuma hatası:", error.message);
+      logger.error("Dosyadan kategori okuma hatası:", error.message);
       throw error;
     }
   }
@@ -161,9 +165,7 @@ class BershkaService {
     extractCategories(data);
     const uniqueCategories = Array.from(allCategories).sort();
 
-    console.log(
-      `✅ Toplam ${uniqueCategories.length} benzersiz kategori çıkarıldı`
-    );
+    logger.info(`Toplam ${uniqueCategories.length} benzersiz kategori çıkarıldı`);
     return uniqueCategories;
   }
 
@@ -178,9 +180,7 @@ class BershkaService {
 
       if (response.data && response.data.productIds) {
         const productIds = response.data.productIds;
-        console.log(
-          `✅ Kategori ${categoryId}: ${productIds.length} ürün bulundu`
-        );
+        logger.info(`Kategori ${categoryId}: ${productIds.length} ürün bulundu`);
 
         productIds.forEach((id) => this.allProductIds.add(id));
 
@@ -200,7 +200,7 @@ class BershkaService {
         };
       }
     } catch (error) {
-      console.error(`❌ Kategori ${categoryId} hata: ${error.message}`);
+      logger.error(`Kategori ${categoryId} hata: ${error.message}`);
       return {
         categoryId,
         productCount: 0,
@@ -214,9 +214,7 @@ class BershkaService {
   async fetchAllCategoriesProducts() {
     try {
       const categories = await this.loadCategoriesFromFile();
-      console.log(
-        `🚀 ${categories.length} kategori için ürün listeleri çekiliyor...`
-      );
+      logger.info(`${categories.length} kategori için ürün listeleri çekiliyor...`);
 
       const results = [];
       let successCount = 0;
@@ -233,12 +231,8 @@ class BershkaService {
         }
 
         if ((i + 1) % 50 === 0) {
-          console.log(
-            `📊 İlerleme: ${i + 1}/${categories.length} kategori tamamlandı`
-          );
-          console.log(
-            `📦 Şu ana kadar toplanan benzersiz ürün: ${this.allProductIds.size}`
-          );
+          logger.info(`İlerleme: ${i + 1}/${categories.length} kategori tamamlandı`);
+          logger.info(`Şu ana kadar toplanan benzersiz ürün: ${this.allProductIds.size}`);
 
           const batchResults = results.slice(i - 49, i + 1);
           await this.saveProductIdsToDatabase(batchResults);
@@ -255,12 +249,10 @@ class BershkaService {
 
       const uniqueProductCount = this.allProductIds.size;
 
-      console.log(`🎉 Özet:`);
-      console.log(
-        `✅ Başarılı kategoriler: ${successCount}/${categories.length}`
-      );
-      console.log(`📦 Toplam ürün sayısı (tekrarlı): ${totalProducts}`);
-      console.log(`🎯 Benzersiz ürün sayısı: ${uniqueProductCount}`);
+      logger.info("Özet:");
+      logger.info(`Başarılı kategoriler: ${successCount}/${categories.length}`);
+      logger.info(`Toplam ürün sayısı (tekrarlı): ${totalProducts}`);
+      logger.info(`Benzersiz ürün sayısı: ${uniqueProductCount}`);
 
       return {
         summary: {
@@ -274,7 +266,7 @@ class BershkaService {
         categoryResults: results,
       };
     } catch (error) {
-      console.error("❌ Genel hata:", error.message);
+      logger.error("Genel hata:", error.message);
       throw error;
     }
   }
@@ -325,10 +317,7 @@ class BershkaService {
             [productId, categories, categoryCount, 0, now, now],
             function (err) {
               if (err) {
-                console.error(
-                  `❌ Unique ürün kaydetme hatası (${productId}):`,
-                  err.message
-                );
+                logger.error(`Unique ürün kaydetme hatası (${productId}):`, err.message);
               } else {
                 savedCount++;
               }
@@ -339,10 +328,10 @@ class BershkaService {
         db.run("COMMIT", (err) => {
           stmt.finalize();
           if (err) {
-            console.error("❌ Transaction commit hatası:", err.message);
+            logger.error("Transaction commit hatası:", err.message);
             reject(err);
           } else {
-            console.log(`✅ ${savedCount} unique ürün veritabanına kaydedildi`);
+            logger.info(`${savedCount} unique ürün veritabanına kaydedildi`);
             resolve(savedCount);
           }
         });
@@ -593,8 +582,8 @@ class BershkaService {
   async _processProductsWithUniqueColors(products) {
     if (!products || products.length === 0) return [];
 
-    console.log(`🎨 ${products.length} ürün renk varyantları ile işleniyor...`);
-    console.log("📊 Her 100 üründe ilerleme raporu verilecek...");
+    logger.info(`${products.length} ürün renk varyantları ile işleniyor...`);
+    logger.info("Her 100 üründe ilerleme raporu verilecek...");
 
     const processedProducts = [];
     let processedCount = 0;
@@ -644,35 +633,29 @@ class BershkaService {
 
         processedCount++;
         if (processedCount % 100 === 0) {
-          console.log(
-            `📈 İlerleme: ${processedCount}/${products.length} ürün işlendi (${processedProducts.length} renk varyantı)`
-          );
+          logger.info(`İlerleme: ${processedCount}/${products.length} ürün işlendi (${processedProducts.length} renk varyantı)`);
         }
       } catch (error) {
-        console.error(`❌ Ürün işleme hatası (${product.id}):`, error.message);
+        logger.error("Ürün işleme hatası (${product.id}):", error.message);
         continue;
       }
     }
 
     if (products.length <= 100 || processedCount % 100 !== 0) {
-      console.log(
-        `📈 İlerleme: ${processedCount}/${products.length} ürün işlendi (${processedProducts.length} renk varyantı)`
-      );
+      logger.info(`İlerleme: ${processedCount}/${products.length} ürün işlendi (${processedProducts.length} renk varyantı)`);
     }
 
-    console.log(`✅ ${processedProducts.length} renk varyantı işlendi`);
+    logger.info(`${processedProducts.length} renk varyantı işlendi`);
     return processedProducts;
   }
 
   async saveUniqueProductDetails(processedProducts) {
     if (!processedProducts || processedProducts.length === 0) {
-      console.log("⚠️ Kaydedilecek ürün detayı yok");
+      logger.warn("Kaydedilecek ürün detayı yok");
       return 0;
     }
 
-    console.log(
-      `💾 ${processedProducts.length} ürün detayı (renk varyantları) veritabanına kaydediliyor...`
-    );
+    logger.info(`${processedProducts.length} ürün detayı (renk varyantları) veritabanına kaydediliyor...`);
 
     const insertQuery = `
             INSERT OR REPLACE INTO bershka_unique_product_details (
@@ -716,14 +699,11 @@ class BershkaService {
           );
         });
       } catch (error) {
-        console.error(
-          `❌ Ürün kaydetme hatası (${product.product_id}):`,
-          error.message
-        );
+        logger.error(`Ürün kaydetme hatası (${product.product_id}):`, error.message);
       }
     }
 
-    console.log(`✅ ${savedCount} ürün detayı veritabanına kaydedildi`);
+    logger.info(`${savedCount} ürün detayı veritabanına kaydedildi`);
     return savedCount;
   }
 
@@ -747,28 +727,24 @@ class BershkaService {
 
       return [];
     } catch (error) {
-      console.error(`❌ API fetch hatası: ${error.message}`);
+      logger.error(`API fetch hatası: ${error.message}`);
       return [];
     }
   }
 
   async loadProductIdsFromDatabase() {
-    console.log(
-      "📂 Bershka unique products tablosundan ürün ID'leri yükleniyor..."
-    );
+    logger.info("Bershka unique products tablosundan ürün ID'leri yükleniyor...");
 
     return new Promise((resolve, reject) => {
       db.all(
         "SELECT product_id FROM bershka_unique_products ORDER BY id",
         (err, rows) => {
           if (err) {
-            console.error("❌ Veritabanı okuma hatası:", err.message);
+            logger.error("Veritabanı okuma hatası:", err.message);
             reject(err);
           } else {
             const productIds = rows.map((row) => row.product_id);
-            console.log(
-              `✅ Bershka unique products tablosundan ${productIds.length} unique ürün ID'si yüklendi`
-            );
+            logger.info(`Bershka unique products tablosundan ${productIds.length} unique ürün ID'si yüklendi`);
             resolve(productIds);
           }
         }
@@ -779,11 +755,9 @@ class BershkaService {
   async getProductDetails(productIds) {
     if (!productIds || productIds.length === 0) return [];
 
-    console.log(
-      `📦 ${productIds.length} ürün ${Math.ceil(
+    logger.info(`${productIds.length} ürün ${Math.ceil(
         productIds.length / this.chunkSize
-      )} chunk'ta işlenecek (chunk boyutu: ${this.chunkSize})...`
-    );
+      )} chunk'ta işlenecek (chunk boyutu: ${this.chunkSize})...`);
 
     const allProducts = [];
     const totalChunks = Math.ceil(productIds.length / this.chunkSize);
@@ -792,16 +766,12 @@ class BershkaService {
       const chunk = productIds.slice(i, i + this.chunkSize);
       const chunkIndex = Math.floor(i / this.chunkSize) + 1;
 
-      console.log(
-        `🔄 Chunk ${chunkIndex}/${totalChunks} işleniyor (${chunk.length} ürün)...`
-      );
+      logger.info(`Chunk ${chunkIndex}/${totalChunks} işleniyor (${chunk.length} ürün)...`);
 
       try {
         const chunkProducts = await this.fetchProductDetails(chunk);
         allProducts.push(...chunkProducts);
-        console.log(
-          `   ✅ ${chunkProducts.length} ürün detayı alındı (Toplam: ${allProducts.length})`
-        );
+        logger.info(`${chunkProducts.length} ürün detayı alındı (Toplam: ${allProducts.length})`);
 
         if (i + this.chunkSize < productIds.length) {
           await new Promise((resolve) =>
@@ -809,43 +779,35 @@ class BershkaService {
           );
         }
       } catch (error) {
-        console.error(`❌ Chunk ${chunkIndex} hatası:`, error.message);
+        logger.error(`Chunk ${chunkIndex} hatası:`, error.message);
       }
     }
 
-    console.log(`🎉 Toplam ${allProducts.length} ürün detayı alındı`);
+    logger.info(`Toplam ${allProducts.length} ürün detayı alındı`);
     return allProducts;
   }
 
   async scrapeAll() {
-    console.log("🚀 Bershka tam scraping başlatılıyor...");
+    logger.info("Bershka tam scraping başlatılıyor...");
 
     try {
-      console.log("📂 1. AŞAMA: Kategoriler ve ürün ID'leri çekiliyor...");
+      logger.info("1. AŞAMA: Kategoriler ve ürün ID'leri çekiliyor...");
       await this.fetchAllCategoriesProducts();
 
       const allProductIds = await this.loadProductIdsFromDatabase();
 
       if (allProductIds.length === 0) {
-        console.log(
-          "⚠️ Kategori scraping tamamlandı ama ürün ID'si bulunamadı."
-        );
+        logger.info("Kategori scraping tamamlandı ama ürün ID'si bulunamadı.");
         return;
       }
 
-      console.log(
-        `📊 Toplam ${allProductIds.length} unique ürün ID'si veritabanında`
-      );
-      console.log(
-        "🎨 2. AŞAMA: Ürün detayları ve renk varyantları çekiliyor..."
-      );
+      logger.info(`Toplam ${allProductIds.length} unique ürün ID'si veritabanında`);
+      logger.info("2. AŞAMA: Ürün detayları ve renk varyantları çekiliyor...");
 
       const totalBatches = Math.ceil(allProductIds.length / this.batchSize);
 
-      console.log(
-        `📦 ${allProductIds.length} ürün, ${this.batchSize}'lük batch'ler halinde işlenecek...`
-      );
-      console.log(`📦 ${totalBatches} batch oluşturuldu\n`);
+      logger.info(`${allProductIds.length} ürün, ${this.batchSize}'lük batch'ler halinde işlenecek...`);
+      logger.info(`${totalBatches} batch oluşturuldu\n`);
 
       let totalProcessed = 0;
 
@@ -857,19 +819,15 @@ class BershkaService {
         );
         const batchProductIds = allProductIds.slice(startIndex, endIndex);
 
-        console.log(
-          `🔄 BATCH ${batchIndex + 1}/${totalBatches} işleniyor (${
+        logger.info(`BATCH ${batchIndex + 1}/${totalBatches} işleniyor (${
             batchProductIds.length
-          } ürün)...`
-        );
+          } ürün)...`);
 
         try {
           const batchProducts = await this.getProductDetails(batchProductIds);
 
           if (batchProducts.length === 0) {
-            console.log(
-              `⚠️ Batch ${batchIndex + 1}: API'den ürün detayı alınamadı`
-            );
+            logger.info(`Batch ${batchIndex + 1}: API'den ürün detayı alınamadı`);
             continue;
           }
 
@@ -877,9 +835,7 @@ class BershkaService {
             await this._processProductsWithUniqueColors(batchProducts);
 
           if (batchProcessedProducts.length === 0) {
-            console.log(
-              `⚠️ Batch ${batchIndex + 1}: İşlenecek ürün bulunamadı`
-            );
+            logger.info(`Batch ${batchIndex + 1}: İşlenecek ürün bulunamadı`);
             continue;
           }
 
@@ -888,32 +844,30 @@ class BershkaService {
           );
           totalProcessed += savedCount;
 
-          console.log(
-            `✅ Batch ${
+          logger.info(`Batch ${
               batchIndex + 1
-            }/${totalBatches} tamamlandı: ${savedCount} ürün kaydedildi`
-          );
-          console.log(`📊 Toplam işlenen: ${totalProcessed} ürün\n`);
+            }/${totalBatches} tamamlandı: ${savedCount} ürün kaydedildi`);
+          logger.info(`Toplam işlenen: ${totalProcessed} ürün\n`);
 
           if (batchIndex < totalBatches - 1) {
-            console.log(`⏱️ Batch arası bekleme: ${this.chunkDelay}ms...`);
+            logger.info(`Batch arası bekleme: ${this.chunkDelay}ms...`);
             await new Promise((resolve) =>
               setTimeout(resolve, this.chunkDelay)
             );
           }
         } catch (error) {
-          console.error(`❌ Batch ${batchIndex + 1} hatası:`, error.message);
+          logger.error(`Batch ${batchIndex + 1} hatası:`, error.message);
           continue;
         }
       }
 
-      console.log(`\n🎉 Bershka scraping tamamlandı!`);
-      console.log(`📊 ÖZET SONUÇ: {`);
-      console.log(`  totalUniqueProducts: ${allProductIds.length},`);
-      console.log(`  totalProcessedProducts: ${totalProcessed}`);
-      console.log(`}`);
+      logger.info("\nBershka scraping tamamlandı!");
+      logger.info("ÖZET SONUÇ: {");
+      logger.info(`totalUniqueProducts: ${allProductIds.length},`);
+      logger.info(`totalProcessedProducts: ${totalProcessed}`);
+      logger.info("}");
     } catch (error) {
-      console.error("❌ Scraping genel hatası:", error.message);
+      logger.error("Scraping genel hatası:", error.message);
       throw error;
     }
   }
@@ -921,18 +875,14 @@ class BershkaService {
   async scrapeAllProductDetails() {
     try {
       const startTime = Date.now();
-      console.log(
-        "🚀 Bershka ürün detayları scraping başlatılıyor (BATCH MODE)..."
-      );
+      logger.info("Bershka ürün detayları scraping başlatılıyor (BATCH MODE)...");
       const allProductIds = await this.loadProductIdsFromDatabase();
 
       if (allProductIds.length === 0) {
         throw new Error("Veritabanında ürün ID'si bulunamadı");
       }
 
-      console.log(
-        `📦 ${allProductIds.length} unique ürün için detay scraping başlatılıyor...`
-      );
+      logger.info(`${allProductIds.length} unique ürün için detay scraping başlatılıyor...`);
 
       const totalBatches = Math.ceil(allProductIds.length / this.batchSize);
       let totalProcessed = 0;
@@ -945,19 +895,15 @@ class BershkaService {
         );
         const batchProductIds = allProductIds.slice(startIndex, endIndex);
 
-        console.log(
-          `🔄 BATCH ${batchIndex + 1}/${totalBatches} işleniyor (${
+        logger.info(`BATCH ${batchIndex + 1}/${totalBatches} işleniyor (${
             batchProductIds.length
-          } ürün)...`
-        );
+          } ürün)...`);
 
         try {
           const batchProducts = await this.getProductDetails(batchProductIds);
 
           if (batchProducts.length === 0) {
-            console.log(
-              `⚠️ Batch ${batchIndex + 1}: API'den ürün detayı alınamadı`
-            );
+            logger.info(`Batch ${batchIndex + 1}: API'den ürün detayı alınamadı`);
             continue;
           }
 
@@ -965,9 +911,7 @@ class BershkaService {
             await this._processProductsWithUniqueColors(batchProducts);
 
           if (batchProcessedProducts.length === 0) {
-            console.log(
-              `⚠️ Batch ${batchIndex + 1}: İşlenecek ürün bulunamadı`
-            );
+            logger.info(`Batch ${batchIndex + 1}: İşlenecek ürün bulunamadı`);
             continue;
           }
 
@@ -976,21 +920,19 @@ class BershkaService {
           );
           totalProcessed += savedCount;
 
-          console.log(
-            `✅ Batch ${
+          logger.info(`Batch ${
               batchIndex + 1
-            }/${totalBatches} tamamlandı: ${savedCount} ürün kaydedildi`
-          );
-          console.log(`📊 Toplam işlenen: ${totalProcessed} ürün\n`);
+            }/${totalBatches} tamamlandı: ${savedCount} ürün kaydedildi`);
+          logger.info(`Toplam işlenen: ${totalProcessed} ürün\n`);
 
           if (batchIndex < totalBatches - 1) {
-            console.log(`⏱️ Batch arası bekleme: ${this.chunkDelay}ms...`);
+            logger.info(`Batch arası bekleme: ${this.chunkDelay}ms...`);
             await new Promise((resolve) =>
               setTimeout(resolve, this.chunkDelay)
             );
           }
         } catch (error) {
-          console.error(`❌ Batch ${batchIndex + 1} hatası:`, error.message);
+          logger.error(`Batch ${batchIndex + 1} hatası:`, error.message);
           continue;
         }
       }
@@ -1006,15 +948,12 @@ class BershkaService {
         timestamp: new Date().toISOString(),
       };
 
-      console.log("🎉 Bershka ürün detayları scraping tamamlandı!");
-      console.log("📊 ÖZET SONUÇ:", result);
+      logger.info("Bershka ürün detayları scraping tamamlandı!");
+      logger.info("ÖZET SONUÇ:", result);
 
       return result;
     } catch (error) {
-      console.error(
-        "❌ Bershka ürün detayları scraping hatası:",
-        error.message
-      );
+      logger.error("Bershka ürün detayları scraping hatası:", error.message);
       return {
         success: false,
         error: error.message,
@@ -1031,32 +970,32 @@ if (require.main === module) {
   const arg = process.argv[2];
 
   if (arg === "all") {
-    console.log("🔄 Bershka tam veri tarama başlatılıyor...");
+    logger.info("Bershka tam veri tarama başlatılıyor...");
     service
       .scrapeAll()
       .then(() => {
-        console.log("✅ Bershka tam veri tarama tamamlandı.");
+        logger.info("Bershka tam veri tarama tamamlandı.");
         process.exit(0);
       })
       .catch((error) => {
-        console.error("❌ Bershka tarama hatası:", error);
+        logger.error("Bershka tarama hatası:", error);
         process.exit(1);
       });
   } else if (arg === "details") {
-    console.log("🔄 Bershka ürün detayları tarama başlatılıyor...");
+    logger.info("Bershka ürün detayları tarama başlatılıyor...");
     service
       .scrapeAllProductDetails()
       .then(() => {
-        console.log("✅ Bershka ürün detayları tarama tamamlandı.");
+        logger.info("Bershka ürün detayları tarama tamamlandı.");
         process.exit(0);
       })
       .catch((error) => {
-        console.error("❌ Bershka ürün detayları tarama hatası:", error);
+        logger.error("Bershka ürün detayları tarama hatası:", error);
         process.exit(1);
       });
   } else {
-    console.log("Kullanım: node services/bershka.service.js [all|details]");
-    console.log("  all - Tüm kategoriler ve ürün ID'leri tara");
-    console.log("  details - Var olan ürün ID'leri için renk detayları tara");
+    logger.info("Kullanım: node services/bershka.service.js [all|details]");
+    logger.info("all - Tüm kategoriler ve ürün ID leri tara");
+    logger.info("details - Var olan ürün ID leri için renk detayları tara");
   }
 }

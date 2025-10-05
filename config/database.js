@@ -1,23 +1,117 @@
 const sqlite3 = require("sqlite3").verbose();
+const { createServiceLogger } = require("../utils/logger");
 
-const db = new sqlite3.Database(
-  "./kunto.db",
-  sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE,
-  (err) => {
-    if (err) {
-      console.error(
-        "SQLite veritabanına bağlanırken hata oluştu:",
-        err.message
-      );
-    } else {
-      console.log("SQLite veritabanına başarıyla bağlanıldı.");
-    }
+const logger = createServiceLogger("config");
+
+class DatabaseManager {
+  constructor() {
+    this.db = null;
+    this.initDatabase();
   }
-);
 
-db.configure("busyTimeout", 30000);
-db.run("PRAGMA journal_mode = WAL;");
-db.run("PRAGMA synchronous = NORMAL;");
+  initDatabase() {
+    this.db = new sqlite3.Database(
+      "./kunto.db",
+      sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE,
+      (err) => {
+        if (err) {
+          logger.error("SQLite veritabanına bağlanırken hata oluştu:", err.message);
+          if (err.message.includes("locked") || err.code === "SQLITE_BUSY") {
+            logger.error("⚠️  VERITABANI KİTLİ! DB Browser for SQLite veya başka bir uygulama açık olabilir.");
+            logger.error("   Çözüm: DB Browser'da 'Write Changes' veya 'Revert Changes' yapın ve kapatın.");
+          }
+          process.exit(1);
+        } else {
+          logger.info("SQLite veritabanına başarıyla bağlanıldı.");
+        }
+      }
+    );
+
+    // Performance optimizations
+    this.db.configure("busyTimeout", 5000); // 5 saniye timeout (daha hızlı hata tespiti)
+
+    // Test DB lock status
+    this.db.run("PRAGMA query_only = OFF;", (err) => {
+      if (err) {
+        logger.error("⚠️  VERITABANI KİTLİ! DB Browser for SQLite veya başka bir uygulama açık olabilir.");
+        logger.error("   Çözüm: DB Browser'da 'Write Changes' veya 'Revert Changes' yapın ve kapatın.");
+        logger.error("   Hata detayı:", err.message);
+        process.exit(1);
+      }
+    });
+
+    this.db.run("PRAGMA journal_mode = WAL;"); // Write-Ahead Logging
+    this.db.run("PRAGMA synchronous = NORMAL;");
+    this.db.run("PRAGMA cache_size = -64000;"); // 64MB cache
+    this.db.run("PRAGMA temp_store = MEMORY;");
+    this.db.run("PRAGMA mmap_size = 30000000000;"); // 30GB mmap
+  }
+
+  // Transaction wrapper
+  async runInTransaction(callback) {
+    return new Promise((resolve, reject) => {
+      this.db.serialize(() => {
+        this.db.run("BEGIN TRANSACTION", (err) => {
+          if (err) {
+            logger.error("Transaction begin failed", { error: err.message });
+            return reject(err);
+          }
+
+          callback()
+            .then((result) => {
+              this.db.run("COMMIT", (commitErr) => {
+                if (commitErr) {
+                  logger.error("Transaction commit failed", { error: commitErr.message });
+                  this.db.run("ROLLBACK");
+                  return reject(commitErr);
+                }
+                resolve(result);
+              });
+            })
+            .catch((callbackErr) => {
+              logger.error("Transaction callback failed", { error: callbackErr.message });
+              this.db.run("ROLLBACK");
+              reject(callbackErr);
+            });
+        });
+      });
+    });
+  }
+
+  // Graceful shutdown
+  close() {
+    return new Promise((resolve, reject) => {
+      this.db.close((err) => {
+        if (err) {
+          logger.error("Database close failed", { error: err.message });
+          reject(err);
+        } else {
+          logger.info("Database connection closed");
+          resolve();
+        }
+      });
+    });
+  }
+
+  // Get raw db instance for backward compatibility
+  getDb() {
+    return this.db;
+  }
+}
+
+const dbManager = new DatabaseManager();
+const db = dbManager.db;
+
+// Graceful shutdown listeners
+process.on("SIGINT", async () => {
+  await dbManager.close();
+  process.exit(0);
+});
+
+process.on("SIGTERM", async () => {
+  await dbManager.close();
+  process.exit(0);
+});
 
 db.serialize(() => {
   db.run(
@@ -42,9 +136,9 @@ db.serialize(() => {
     )`,
     (err) => {
       if (err) {
-        console.error("Users tablosu oluşturulurken hata:", err.message);
+        logger.error("Users tablosu oluşturulurken hata:", err.message);
       } else {
-        console.log("Users tablosu başarıyla doğrulandı/oluşturuldu.");
+        logger.info("Users tablosu başarıyla doğrulandı/oluşturuldu.");
       }
     }
   );
@@ -76,16 +170,15 @@ db.serialize(() => {
         is_on_sale INTEGER DEFAULT 0,
         sale_price INTEGER,
         last_updated TEXT,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        color_name TEXT,
+        color_id TEXT
     )`,
     (err) => {
       if (err) {
-        console.error(
-          "Zara products tablosu oluşturulurken hata:",
-          err.message
-        );
+        logger.error("Zara products tablosu oluşturulurken hata:", err.message);
       } else {
-        console.log("Zara products tablosu başarıyla doğrulandı/oluşturuldu.");
+        logger.info("Zara products tablosu başarıyla doğrulandı/oluşturuldu.");
       }
     }
   );
@@ -105,14 +198,9 @@ db.serialize(() => {
     )`,
     (err) => {
       if (err) {
-        console.error(
-          "Zara categories tablosu oluşturulurken hata:",
-          err.message
-        );
+        logger.error("Zara categories tablosu oluşturulurken hata:", err.message);
       } else {
-        console.log(
-          "Zara categories tablosu başarıyla doğrulandı/oluşturuldu."
-        );
+        logger.info("Zara categories tablosu başarıyla doğrulandı/oluşturuldu.");
       }
     }
   );
@@ -131,14 +219,9 @@ db.serialize(() => {
     )`,
     (err) => {
       if (err) {
-        console.error(
-          "Stradivarius categories tablosu oluşturulurken hata:",
-          err.message
-        );
+        logger.error("Stradivarius categories tablosu oluşturulurken hata:", err.message);
       } else {
-        console.log(
-          "Stradivarius categories tablosu başarıyla doğrulandı/oluşturuldu."
-        );
+        logger.info("Stradivarius categories tablosu başarıyla doğrulandı/oluşturuldu.");
       }
     }
   );
@@ -166,14 +249,9 @@ db.serialize(() => {
     )`,
     (err) => {
       if (err) {
-        console.error(
-          "Stradivarius unique product details tablosu oluşturulurken hata:",
-          err.message
-        );
+        logger.error("Stradivarius unique product details tablosu oluşturulurken hata:", err.message);
       } else {
-        console.log(
-          "Stradivarius unique product details tablosu başarıyla doğrulandı/oluşturuldu."
-        );
+        logger.info("Stradivarius unique product details tablosu başarıyla doğrulandı/oluşturuldu.");
       }
     }
   );
@@ -192,14 +270,9 @@ db.serialize(() => {
     )`,
     (err) => {
       if (err) {
-        console.error(
-          "Bershka categories tablosu oluşturulurken hata:",
-          err.message
-        );
+        logger.error("Bershka categories tablosu oluşturulurken hata:", err.message);
       } else {
-        console.log(
-          "Bershka categories tablosu başarıyla doğrulandı/oluşturuldu."
-        );
+        logger.info("Bershka categories tablosu başarıyla doğrulandı/oluşturuldu.");
       }
     }
   );
@@ -214,15 +287,14 @@ db.serialize(() => {
     )`,
     (err) => {
       if (err) {
-        console.error(
-          "Cache metadata tablosu oluşturulurken hata:",
-          err.message
-        );
+        logger.error("Cache metadata tablosu oluşturulurken hata:", err.message);
       } else {
-        console.log("Cache metadata tablosu başarıyla doğrulandı/oluşturuldu.");
+        logger.info("Cache metadata tablosu başarıyla doğrulandı/oluşturuldu.");
       }
     }
   );
 });
 
+// Export both db instance and dbManager for backward compatibility
 module.exports = db;
+module.exports.dbManager = dbManager;

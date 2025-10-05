@@ -11,35 +11,130 @@ const userRoutes = require("./routes/user.routes");
 const authRoutes = require("./routes/auth.routes");
 const simpleUnifiedRoutes = require("./routes/simple-unified.routes");
 const productsRoutes = require("./routes/products.routes");
+const adminRoutes = require("./routes/admin.routes");
 const schedulerService = require("./services/scheduler.service");
 const helmet = require("helmet");
+const compression = require("compression");
 const config = require("./config/environment");
+const constants = require("./config/constants");
 const { setSessionCookie } = require("./utils/helpers");
 const imageProxyService = require("./services/image-proxy.service");
-const app = express();
-const PORT = 3000;
+const { createServiceLogger } = require("./utils/logger");
+const { notFoundHandler, errorHandler } = require('./middleware/error-handler.middleware');
+const cache = require('./utils/cache');
+const trackRequest = require('./middleware/monitoring.middleware');
 
-app.use(helmet());
+const logger = createServiceLogger("server");
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(compression({
+  level: constants.COMPRESSION.LEVEL,
+  threshold: constants.COMPRESSION.THRESHOLD,
+  filter: (req, res) => {
+    const contentType = res.getHeader('Content-Type');
+    if (contentType && contentType.includes('text/event-stream')) {
+      return false;
+    }
+
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    return compression.filter(req, res);
+  }
+}));
+
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        baseUri: ["'self'"],
+        fontSrc: ["'self'", "https:", "data:", "https://fonts.gstatic.com"],
+        formAction: ["'self'"],
+        frameAncestors: ["'self'"],
+        imgSrc: ["'self'", "data:"],
+        objectSrc: ["'none'"],
+        scriptSrc: ["'self'", "https://cdn.jsdelivr.net"],
+        scriptSrcAttr: ["'none'"],
+        styleSrc: ["'self'", "https:", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        upgradeInsecureRequests: [],
+      },
+    },
+  })
+);
 app.use(cookieParser());
 app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
+app.use(trackRequest);
 
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "fallback-secret-key",
+    secret: constants.SESSION.SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
       secure: process.env.NODE_ENV === "production",
       httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000, // 24 saat
+      maxAge: constants.SESSION.MAX_AGE,
     },
   })
 );
 
 app.use(passport.initialize());
 app.use(passport.session());
+
+app.get("/test-compression", (req, res) => {
+  const largeData = { data: "x".repeat(10000), message: "This should be compressed" };
+  res.json(largeData);
+});
+
+app.get("/cache/stats", (req, res, next) => {
+
+  try {
+    const stats = cache.getStats();
+    const hitRate = cache.getHitRate();
+
+    res.json({
+      success: true,
+      stats,
+      hitRate
+    });
+  } catch (error) {
+    logger.error("Cache stats error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post("/cache/invalidate", (req, res, next) => {
+  try {
+    const { type } = req.body;
+
+    switch (type) {
+      case 'products':
+        cache.invalidateProductCache();
+        break;
+      case 'images':
+        cache.invalidateImageCache();
+        break;
+      case 'stats':
+        cache.invalidateStatsCache();
+        break;
+      case 'all':
+      default:
+        cache.invalidateAllCache();
+    }
+
+    res.json({
+      success: true,
+      message: `Cache invalidated: ${type || 'all'}`
+    });
+  } catch (error) {
+    logger.error("Cache invalidation error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 app.get("/", (req, res) => {
   res.sendFile(__dirname + "/public/index.html");
@@ -59,8 +154,8 @@ app.get("/dashboard", (req, res) => {
 
 const csrfProtection = csrf({ cookie: true });
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 150,
+  windowMs: constants.RATE_LIMIT.WINDOW_MS,
+  max: constants.RATE_LIMIT.MAX_REQUESTS,
   message:
     "Çok fazla istek gönderdiniz. Lütfen 15 dakika sonra tekrar deneyin.",
   standardHeaders: true,
@@ -70,11 +165,12 @@ const apiLimiter = rateLimit({
 const csrfProtectedRoutes = express.Router();
 csrfProtectedRoutes.use(csrfProtection);
 
+
 app.post("/api/logout", (req, res) => {
   if (req.session) {
     req.session.destroy((err) => {
       if (err) {
-        console.error("Session destroy error:", err);
+        logger.error("Session destroy error:", err);
       }
     });
   }
@@ -95,7 +191,7 @@ app.post("/api/logout", (req, res) => {
 
   res.clearCookie("_csrf");
 
-  console.log("🚪 User logged out - all sessions cleared");
+  logger.info("User logged out - all sessions cleared");
   res.json({ success: true, message: "Logout successful" });
 });
 
@@ -105,25 +201,47 @@ app.get("/api/csrf-token", csrfProtectedRoutes, (req, res) => {
 
 app.use("/api", apiLimiter, userRoutes);
 app.use("/api/simple", simpleUnifiedRoutes);
-console.log("✅ Simple unified routes loaded: /api/simple");
+logger.info("Simple unified routes loaded: /api/simple");
 
 app.use("/api/products", productsRoutes);
-console.log("✅ Products routes restored: /api/products");
+logger.info("Products routes restored: /api/products");
 
 app.use("/auth", authRoutes);
+
+app.use("/admin", adminRoutes);
+logger.info("Admin routes loaded: /admin");
 
 app.get("/api/image-proxy", async (req, res) => {
   try {
     const { url } = req.query;
 
+    const cachedImage = cache.getCachedImage(url);
+    if (cachedImage) {
+      res.set("Content-Type", cachedImage.contentType);
+      res.set("Cache-Control", "public, max-age=86400");
+      res.set("X-Cache", "HIT");
+      return res.send(cachedImage.buffer);
+    }
+
     const result = await imageProxyService.proxyImage(url);
+
+    const chunks = [];
+    result.data.on('data', (chunk) => chunks.push(chunk));
+    result.data.on('end', () => {
+      const buffer = Buffer.concat(chunks);
+      cache.setCachedImage(url, {
+        buffer,
+        contentType: result.contentType
+      });
+    });
 
     res.set("Content-Type", result.contentType);
     res.set("Cache-Control", result.cacheControl);
+    res.set("X-Cache", "MISS");
 
     result.data.pipe(res);
   } catch (error) {
-    console.error("Image proxy hatası:", error.message);
+    logger.error("Image proxy hatası:", error.message);
     res.status(404).send("Resim bulunamadı");
   }
 });
@@ -200,30 +318,31 @@ app.post("/api/scheduler/disable", (req, res) => {
   }
 });
 
+app.use(notFoundHandler);
+app.use(errorHandler);
+
 async function startServer() {
   try {
     await schedulerService.initialize();
 
     app.listen(PORT, () => {
-      console.log(`🚀 Sunucu çalışıyor: http://localhost:${PORT}`);
-      console.log(`📊 Products API: http://localhost:${PORT}/api/products`);
-      console.log(
-        `📈 Stats API: http://localhost:${PORT}/api/products/stats/summary`
-      );
+      logger.info(`Sunucu çalışıyor: http://localhost:${PORT}`);
+      logger.info(`Products API: http://localhost:${PORT}/api/products`);
+      logger.info(`Stats API: http://localhost:${PORT}/api/products/stats/summary`);
     });
   } catch (error) {
-    console.error("❌ Sunucu başlatılırken hata:", error);
+    logger.error("Sunucu başlatılırken hata:", error);
     process.exit(1);
   }
 }
 
 process.on("SIGINT", () => {
-  console.log("\n🛑 Sunucu kapatılıyor...");
+  logger.info("\nSunucu kapatılıyor...");
   process.exit(0);
 });
 
 process.on("SIGTERM", () => {
-  console.log("\n🛑 Sunucu kapatılıyor...");
+  logger.info("\nSunucu kapatılıyor...");
   process.exit(0);
 });
 

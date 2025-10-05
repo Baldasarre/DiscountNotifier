@@ -1,6 +1,9 @@
 const cron = require("node-cron");
 const StradivariusService = require("./stradivarius.service");
 const config = require("../config/environment");
+const { createServiceLogger } = require("../utils/logger");
+
+const logger = createServiceLogger("scheduler");
 
 const zaraService = require("./zara.service");
 const bershkaService = require("./bershka.service");
@@ -15,104 +18,90 @@ class SchedulerService {
 
   async initialize() {
     if (this.isInitialized) {
-      console.log("⚠️  Scheduler zaten başlatılmış");
+      logger.warn("Scheduler zaten başlatılmış");
       return;
     }
 
-    console.log("🚀 Scheduler başlatılıyor...");
+    logger.info("Scheduler başlatılıyor...");
 
     if (this.dataFetchEnabled) {
       await this.runInitialDataFetch();
     } else {
-      console.log("🔌 Veri çekme anahtarı kapalı - ilk çekme atlanıyor");
+      logger.info("� Veri çekme anahtarı kapalı - ilk çekme atlanıyor");
     }
 
     this.startPeriodicTasks();
 
     this.isInitialized = true;
-    console.log("✅ Scheduler başarıyla başlatıldı");
+    logger.info("Scheduler başarıyla başlatıldı");
   }
 
   async runInitialDataFetch() {
-    console.log("📡 İlk veri çekme işlemi başlatılıyor...");
+    logger.info("� İlk veri çekme işlemi başlatılıyor...");
 
     try {
       if (this.isDevelopment && !config.FORCE_INITIAL_FETCH) {
-        console.log("🟨 Development modunda Zara otomatik çekme devre dışı");
-        console.log(
-          "💡 Manuel Zara fetch için environment değişkeni: FORCE_INITIAL_FETCH=true"
-        );
+        logger.info("� Development modunda Zara otomatik çekme devre dışı");
+        logger.info("Manuel Zara fetch için environment değişkeni: FORCE_INITIAL_FETCH=true");
       } else {
-        console.log("🟨 Zara ürünleri çekiliyor...");
-        console.log("⚠️ Zara scraping henüz scheduler'a entegre edilmedi");
+        logger.info("� Zara ürünleri çekiliyor...");
+        logger.warn("Zara scraping henüz scheduler a entegre edilmedi");
       }
 
       if (this.isDevelopment && !config.FORCE_STRADIVARIUS_INITIAL_FETCH) {
-        console.log(
-          "🟪 Development modunda Stradivarius otomatik çekme devre dışı"
-        );
-        console.log(
-          "💡 Manuel Stradivarius fetch için environment değişkeni: FORCE_STRADIVARIUS_INITIAL_FETCH=true"
-        );
+        logger.info("Development modunda Stradivarius otomatik çekme devre dışı");
+        logger.info("Manuel Stradivarius fetch için environment değişkeni: FORCE_STRADIVARIUS_INITIAL_FETCH=true");
       } else {
-        console.log("🟪 Stradivarius ürünleri çekiliyor...");
+        logger.info("� Stradivarius ürünleri çekiliyor...");
         const stradivariusInstance = new StradivariusService();
         await stradivariusInstance.scrapeAll();
-        console.log("✅ Stradivarius veri çekme işlemi tamamlandı");
+        logger.info("Stradivarius veri çekme işlemi tamamlandı");
       }
 
       if (config.FORCE_BERSHKA_CATEGORY_FETCH) {
-        console.log("🟩 Bershka kategorileri çekiliyor...");
+        logger.info("� Bershka kategorileri çekiliyor...");
         const BershkaService = require("./bershka.service");
         const bershkaInstance = new BershkaService();
 
         try {
           if (config.ENABLE_BERSHKA_CURL_FETCH) {
-            console.log(
-              "🔄 CURL ile fresh data çekiliyor ve kategoriler işleniyor..."
-            );
+            logger.info("CURL ile fresh data çekiliyor ve kategoriler işleniyor...");
             await bershkaInstance.fetchFreshDataWithCurl();
           } else {
-            console.log("📁 Mevcut test data kullanılıyor...");
+            logger.info("� Mevcut test data kullanılıyor...");
             await bershkaInstance.fetchCategoriesFromTestData();
           }
         } catch (curlError) {
-          console.log("⚠️ CURL başarısız, mevcut data kullanılıyor...");
+          logger.warn("CURL başarısız, mevcut data kullanılıyor...");
           await bershkaInstance.fetchCategoriesFromTestData();
         }
 
-        console.log("✅ Bershka kategori çekme işlemi tamamlandı");
+        logger.info("Bershka kategori çekme işlemi tamamlandı");
       } else {
-        console.log("🟩 Development modunda Bershka kategori çekme devre dışı");
-        console.log(
-          "💡 Manuel Bershka kategori fetch için environment değişkeni: FORCE_BERSHKA_CATEGORY_FETCH=true"
-        );
-        console.log(
-          "💡 CURL ile fresh data için: ENABLE_BERSHKA_CURL_FETCH=true"
-        );
+        logger.info("� Development modunda Bershka kategori çekme devre dışı");
+        logger.info("Manuel Bershka kategori fetch için environment değişkeni: FORCE_BERSHKA_CATEGORY_FETCH=true");
+        logger.info("CURL ile fresh data için: ENABLE_BERSHKA_CURL_FETCH=true");
       }
 
       if (this.isDevelopment && !config.FORCE_BERSHKA_INITIAL_FETCH) {
-        console.log("🟩 Development modunda Bershka otomatik çekme devre dışı");
-        console.log(
-          "💡 Manuel Bershka fetch için environment değişkeni: FORCE_BERSHKA_INITIAL_FETCH=true"
-        );
+        logger.info("� Development modunda Bershka otomatik çekme devre dışı");
+        logger.info("Manuel Bershka fetch için environment değişkeni: FORCE_BERSHKA_INITIAL_FETCH=true");
       } else {
-        console.log("🟩 Bershka ürünleri çekiliyor...");
+        logger.info("� Bershka ürünleri çekiliyor...");
         const BershkaService = require("./bershka.service");
         const bershkaInstance = new BershkaService();
         await bershkaInstance.fetchAllCategoriesProducts();
-        console.log("✅ Bershka veri çekme işlemi tamamlandı");
+        logger.info("Bershka veri çekme işlemi tamamlandı");
       }
     } catch (error) {
-      console.error("❌ İlk veri çekme işleminde hata:", error);
+      logger.error("İlk veri çekme işleminde hata:", error);
     }
   }
 
   startPeriodicTasks() {
     if (this.isDevelopment && !config.ENABLE_PERIODIC_TASKS) {
-      console.log("⏰ Development modunda periyodik görevler devre dışı");
-      console.log("💡 Aktif etmek için: ENABLE_PERIODIC_TASKS=true");
+      logger.info("⏰ Development modunda periyodik görevler devre dışı");
+      logger.info("� Aktif etmek için: ENABLE_PERIODIC_TASKS=true");
       return;
     }
 
@@ -120,12 +109,10 @@ class SchedulerService {
       "0 */6 * * *",
       async () => {
         if (this.dataFetchEnabled) {
-          console.log("🔄 Periyodik veri çekme başlatılıyor...");
+          logger.info("� Periyodik veri çekme başlatılıyor...");
           await this.runInitialDataFetch();
         } else {
-          console.log(
-            "🔌 Veri çekme anahtarı kapalı - periyodik çekme atlanıyor"
-          );
+          logger.info("Veri çekme anahtarı kapalı - periyodik çekme atlanıyor");
         }
       },
       {
@@ -137,29 +124,27 @@ class SchedulerService {
     this.jobs.set("dataFetch", dataFetchJob);
     dataFetchJob.start();
 
-    console.log("⏰ Periyodik görevler başlatıldı:");
-    console.log("   - Veri çekme: Her 6 saatte bir");
-    console.log(
-      `   - Anahtar durumu: ${this.dataFetchEnabled ? "AÇIK" : "KAPALI"}`
-    );
+    logger.info("⏰ Periyodik görevler başlatıldı:");
+    logger.info("- Veri çekme: Her 6 saatte bir");
+    logger.info(`- Anahtar durumu: ${this.dataFetchEnabled ? "AÇIK" : "KAPALI"}`);
   }
 
   toggleDataFetch() {
     this.dataFetchEnabled = !this.dataFetchEnabled;
     const status = this.dataFetchEnabled ? "AÇIK" : "KAPALI";
-    console.log(`�� Veri çekme anahtarı ${status} yapıldı`);
+    logger.info("�� Veri çekme anahtarı ${status} yapıldı");
     return this.dataFetchEnabled;
   }
 
   enableDataFetch() {
     this.dataFetchEnabled = true;
-    console.log("🔌 Veri çekme anahtarı AÇIK yapıldı");
+    logger.info("� Veri çekme anahtarı AÇIK yapıldı");
     return true;
   }
 
   disableDataFetch() {
     this.dataFetchEnabled = false;
-    console.log("🔌 Veri çekme anahtarı KAPALI yapıldı");
+    logger.info("� Veri çekme anahtarı KAPALI yapıldı");
     return false;
   }
 
@@ -174,7 +159,7 @@ class SchedulerService {
     const job = this.jobs.get(jobName);
     if (job) {
       job.stop();
-      console.log(`⏹️  ${jobName} görevi durduruldu`);
+      logger.info("⏹  ${jobName} görevi durduruldu");
     }
   }
 
@@ -182,68 +167,73 @@ class SchedulerService {
     const job = this.jobs.get(jobName);
     if (job) {
       job.start();
-      console.log(`▶️  ${jobName} görevi başlatıldı`);
+      logger.info("▶  ${jobName} görevi başlatıldı");
     }
   }
 
   stopAll() {
     this.jobs.forEach((job, name) => {
       job.stop();
-      console.log(`⏹️  ${name} görevi durduruldu`);
+      logger.info("⏹  ${name} görevi durduruldu");
     });
 
     this.isInitialized = false;
-    console.log("🛑 Tüm scheduled görevler durduruldu");
+    logger.info("� Tüm scheduled görevler durduruldu");
   }
 
   async performDataUpdate() {
     if (!this.dataFetchEnabled) {
-      console.log("🔌 Veri çekme anahtarı kapalı - güncelleme atlanıyor");
+      logger.info("� Veri çekme anahtarı kapalı - güncelleme atlanıyor");
       return false;
     }
 
     try {
-      console.log("🔍 Yeni ürün kontrolü başlatılıyor...");
+      logger.debug("Yeni ürün kontrolü başlatılıyor...");
 
       const hasNewProducts = await zaraService.checkForNewProducts();
 
       if (hasNewProducts) {
-        console.log(
-          "🆕 Yeni ürünler tespit edildi - tam güncelleme yapılıyor..."
-        );
+        logger.info("🆕 Yeni ürünler tespit edildi - tam güncelleme yapılıyor...");
         await zaraService.fetchAndSaveAllProducts();
         return true;
       } else {
-        console.log("✅ Yeni ürün yok - mevcut verilerle devam ediliyor");
+        logger.info("Yeni ürün yok - mevcut verilerle devam ediliyor");
         return false;
       }
     } catch (error) {
-      console.error("❌ Veri güncelleme hatası:", error);
+      logger.error("Veri güncelleme hatası:", error);
       return false;
     }
   }
 
-  async triggerManualUpdate(brand = "zara", forceFullUpdate = false) {
-    console.log(`🔄 Manuel ${brand} güncellemesi başlatılıyor...`);
+  async triggerManualUpdate(brand = "zara", forceFullUpdate = false, jobId = null) {
+    logger.info(`🔄 Manuel ${brand} güncellemesi başlatılıyor...`);
 
     try {
       if (brand === "zara") {
-        if (forceFullUpdate) {
-          console.log("🔄 Zorla tam güncelleme yapılıyor...");
-          await zaraService.fetchAndSaveAllProducts(true);
-        } else {
-          console.log("🔍 Manuel performans odaklı güncelleme başlatılıyor...");
-          await this.performDataUpdate();
-        }
-        console.log("✅ Manuel Zara güncellemesi tamamlandı");
+        logger.info("🚀 Zara ürünleri çekiliyor...");
+        await zaraService.fetchAndSaveAllProducts(true, jobId);
+        logger.info("✅ Manuel Zara güncellemesi tamamlandı");
+        return true;
+      } else if (brand === "bershka") {
+        logger.info("🚀 Bershka ürünleri çekiliyor...");
+        await bershkaService.fetchAllCategoriesProducts(jobId);
+        logger.info("✅ Manuel Bershka güncellemesi tamamlandı");
+        return true;
+      } else if (brand === "stradivarius") {
+        logger.info("🚀 Stradivarius ürünleri çekiliyor...");
+        const StradivariusService = require("./stradivarius.service");
+        const stradivariusInstance = new StradivariusService();
+        await stradivariusInstance.scrapeAll(jobId);
+        logger.info("✅ Manuel Stradivarius güncellemesi tamamlandı");
         return true;
       } else {
-        console.log(`❌ ${brand} markası henüz desteklenmiyor`);
+        logger.error(`❌ ${brand} markası henüz desteklenmiyor`);
         return false;
       }
     } catch (error) {
-      console.error(`❌ Manuel ${brand} güncellemesinde hata:`, error);
-      return false;
+      logger.error(`❌ Manuel ${brand} güncellemesinde hata:`, error);
+      throw error; // Re-throw so caller can handle it
     }
   }
 

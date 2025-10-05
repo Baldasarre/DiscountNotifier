@@ -29,6 +29,7 @@ export const API_ENDPOINTS = {
   CHECK_SESSION: "/api/check-session",
   CSRF_TOKEN: "/api/csrf-token",
   LOGOUT: "/api/logout",
+  HEARTBEAT: "/api/heartbeat",
 };
 
 export const COOKIE_CONFIG = {

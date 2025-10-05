@@ -1,6 +1,9 @@
 const axios = require("axios");
 const db = require("../config/database");
 const config = require("../config/stradivarius.config");
+const { createServiceLogger } = require("../utils/logger");
+
+const logger = createServiceLogger("stradivarius");
 
 class StradivariusService {
   constructor() {
@@ -24,9 +27,7 @@ class StradivariusService {
   }
 
   initializeTables() {
-    console.log(
-      "🔧 [STRADIVARIUS-SERVICE] Creating Stradivarius database tables..."
-    );
+    logger.info("[STRADIVARIUS-SERVICE] Creating Stradivarius database tables...");
 
     const tables = [
       {
@@ -86,9 +87,9 @@ class StradivariusService {
     tables.forEach((table) => {
       db.run(table.sql, (err) => {
         if (err) {
-          console.error(`❌ Error creating ${table.name} table:`, err.message);
+          logger.error(`Error creating ${table.name} table:`, err.message);
         } else {
-          console.log(`✅ ${table.name} table created successfully`);
+          logger.info(`${table.name} table created successfully`);
         }
       });
     });
@@ -104,9 +105,9 @@ class StradivariusService {
     indexes.forEach((indexSql) => {
       db.run(indexSql, (err) => {
         if (err) {
-          console.error("❌ Error creating index:", err.message);
+          logger.error("Error creating index:", err.message);
         } else {
-          console.log("✅ Index created successfully");
+          logger.info("Index created successfully");
         }
       });
     });
@@ -115,7 +116,7 @@ class StradivariusService {
   async getAllCategories() {
     try {
       const url = `${this.baseUrl}/2/catalog/store/${this.storeId}/${this.catalogId}/category?languageId=${this.languageId}&typeCatalog=1&appId=${this.appId}`;
-      console.log("🔍 Stradivarius kategorileri çekiliyor...");
+      logger.debug("Stradivarius kategorileri çekiliyor...");
 
       const response = await axios.get(url, {
         headers: this.headers,
@@ -126,13 +127,13 @@ class StradivariusService {
         const allCategories = this._findAllProductCategories(
           response.data.categories
         );
-        console.log(`✅ ${allCategories.length} kategori bulundu`);
+        logger.info(`${allCategories.length} kategori bulundu`);
         return allCategories;
       } else {
         throw new Error("Kategoriler alınamadı");
       }
     } catch (error) {
-      console.error("❌ Kategori çekme hatası:", error.message);
+      logger.error("Kategori çekme hatası:", error.message);
       throw error;
     }
   }
@@ -170,19 +171,15 @@ class StradivariusService {
       const chunks = this._chunkArray(productIds, this.chunkSize);
       const allProducts = [];
 
-      console.log(
-        `📦 ${productIds.length} ürün ${chunks.length} chunk'ta işlenecek (chunk boyutu: ${this.chunkSize})...`
-      );
+      logger.info(`${productIds.length} ürün ${chunks.length} chunk'ta işlenecek (chunk boyutu: ${this.chunkSize})...`);
 
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
         let retryCount = 0;
 
-        console.log(
-          `🔄 Chunk ${i + 1}/${chunks.length} işleniyor (${
+        logger.info(`Chunk ${i + 1}/${chunks.length} işleniyor (${
             chunk.length
-          } ürün)...`
-        );
+          } ürün)...`);
 
         while (retryCount < this.maxRetries) {
           try {
@@ -196,27 +193,22 @@ class StradivariusService {
 
             if (response.data.products) {
               allProducts.push(...response.data.products);
-              console.log(
-                `   ✅ ${response.data.products.length} ürün detayı alındı (Toplam: ${allProducts.length})`
-              );
+              logger.info(`${response.data.products.length} ürün detayı alındı (Toplam: ${allProducts.length})`);
             } else {
-              console.log(`   ⚠️ Bu chunk'ta ürün detayı bulunamadı`);
+              logger.warn("Bu chunk'ta ürün detayı bulunamadı");
             }
 
             break;
           } catch (error) {
             retryCount++;
-            console.error(
-              `   ❌ Chunk ${i + 1} hatası (${retryCount}/${this.maxRetries}):`,
-              error.message
-            );
+            logger.error(`Chunk ${i + 1} hatası (${retryCount}/${this.maxRetries}):`, error.message);
 
             if (retryCount >= this.maxRetries) {
-              console.error(`   💀 Chunk ${i + 1} atlandı (max retry aşıldı)`);
+              logger.error(`Chunk ${i + 1} atlandı (max retry aşıldı)`);
               break;
             }
 
-            console.log(`   ⏳ 3 saniye bekleyip tekrar denenecek...`);
+            logger.info("⏳ 3 saniye bekleyip tekrar denenecek...");
             await this._delay(3000);
           }
         }
@@ -226,10 +218,10 @@ class StradivariusService {
         }
       }
 
-      console.log(`🎉 Toplam ${allProducts.length} ürün detayı alındı`);
+      logger.info(`Toplam ${allProducts.length} ürün detayı alındı`);
       return allProducts;
     } catch (error) {
-      console.error("❌ Ürün detayı çekme hatası:", error.message);
+      logger.error("Ürün detayı çekme hatası:", error.message);
       throw error;
     }
   }
@@ -404,17 +396,15 @@ class StradivariusService {
 
   async _processProductsWithUniqueColors(products) {
     if (!products || !Array.isArray(products)) {
-      console.error("❌ products parametresi geçersiz!");
+      logger.error("products parametresi geçersiz!");
       return [];
     }
 
     const processedProducts = [];
     let processedCount = 0;
 
-    console.log(`🎨 ${products.length} ürün renk varyantları ile işleniyor...`);
-    console.log(
-      `📊 Her ${this.progressInterval} üründe ilerleme raporu verilecek...`
-    );
+    logger.info(`${products.length} ürün renk varyantları ile işleniyor...`);
+    logger.info(`Her ${this.progressInterval} üründe ilerleme raporu verilecek...`);
 
     for (let index = 0; index < products.length; index++) {
       const product = products[index];
@@ -472,32 +462,27 @@ class StradivariusService {
           processedCount++;
         }
       } catch (error) {
-        console.error(
-          `❌ Ürün işleme hatası (${product.id || "unknown"}):`,
-          error.message
-        );
+        logger.error(`Ürün işleme hatası (${product.id || "unknown"}):`, error.message);
       }
 
       if (
         (index + 1) % this.progressInterval === 0 ||
         index === products.length - 1
       ) {
-        console.log(
-          `📈 İlerleme: ${index + 1}/${
+        logger.info(`İlerleme: ${index + 1}/${
             products.length
-          } ürün işlendi (${processedCount} renk varyantı)`
-        );
+          } ürün işlendi (${processedCount} renk varyantı)`);
       }
     }
 
-    console.log(`✅ ${processedCount} renk varyantı işlendi`);
+    logger.info(`${processedCount} renk varyantı işlendi`);
     return processedProducts;
   }
 
   async saveCategoriesWithProducts(categoriesData) {
     return new Promise((resolve, reject) => {
-      console.log(
-        `💾 ${categoriesData.length} kategori veritabanına kaydediliyor...`
+      logger.info(
+        ` ${categoriesData.length} kategori veritabanına kaydediliyor...`
       );
 
       const insertQuery = `
@@ -527,8 +512,8 @@ class StradivariusService {
             ],
             function (err) {
               if (err) {
-                console.error(
-                  `❌ Kategori kaydetme hatası (${category.category_id}):`,
+                logger.error(
+                  ` Kategori kaydetme hatası (${category.category_id}):`,
                   err.message
                 );
               } else {
@@ -541,13 +526,13 @@ class StradivariusService {
         db.run("COMMIT", (err) => {
           stmt.finalize();
           if (err) {
-            console.error(
-              "❌ Kategori transaction commit hatası:",
+            logger.error(
+              " Kategori transaction commit hatası:",
               err.message
             );
             reject(err);
           } else {
-            console.log(`✅ ${savedCount} kategori veritabanına kaydedildi`);
+            logger.info("${savedCount} kategori veritabanına kaydedildi");
             resolve(savedCount);
           }
         });
@@ -557,8 +542,8 @@ class StradivariusService {
 
   async saveUniqueProducts(productIds, categoriesData) {
     return new Promise((resolve, reject) => {
-      console.log(
-        `💾 ${productIds.length} benzersiz ürün veritabanına kaydediliyor...`
+      logger.info(
+        ` ${productIds.length} benzersiz ürün veritabanına kaydediliyor...`
       );
 
       const productCategoryMap = new Map();
@@ -594,8 +579,8 @@ class StradivariusService {
             [productId.toString(), categoriesJson, categories.length],
             function (err) {
               if (err) {
-                console.error(
-                  `❌ Benzersiz ürün kaydetme hatası (${productId}):`,
+                logger.error(
+                  ` Benzersiz ürün kaydetme hatası (${productId}):`,
                   err.message
                 );
               } else {
@@ -608,14 +593,14 @@ class StradivariusService {
         db.run("COMMIT", (err) => {
           stmt.finalize();
           if (err) {
-            console.error(
-              "❌ Benzersiz ürün transaction commit hatası:",
+            logger.error(
+              " Benzersiz ürün transaction commit hatası:",
               err.message
             );
             reject(err);
           } else {
-            console.log(
-              `✅ ${savedCount} benzersiz ürün veritabanına kaydedildi`
+            logger.info(
+              ` ${savedCount} benzersiz ürün veritabanına kaydedildi`
             );
             resolve(savedCount);
           }
@@ -626,8 +611,8 @@ class StradivariusService {
 
   async saveUniqueProductDetails(processedProducts) {
     return new Promise((resolve, reject) => {
-      console.log(
-        `💾 ${processedProducts.length} ürün detayı (renk varyantları) veritabanına kaydediliyor...`
+      logger.info(
+        ` ${processedProducts.length} ürün detayı (renk varyantları) veritabanına kaydediliyor...`
       );
 
       const insertQuery = `
@@ -663,8 +648,8 @@ class StradivariusService {
             ],
             function (err) {
               if (err) {
-                console.error(
-                  `❌ Ürün detayı kaydetme hatası (${product.product_id}):`,
+                logger.error(
+                  ` Ürün detayı kaydetme hatası (${product.product_id}):`,
                   err.message
                 );
               } else {
@@ -677,13 +662,13 @@ class StradivariusService {
         db.run("COMMIT", (err) => {
           stmt.finalize();
           if (err) {
-            console.error(
-              "❌ Ürün detayı transaction commit hatası:",
+            logger.error(
+              " Ürün detayı transaction commit hatası:",
               err.message
             );
             reject(err);
           } else {
-            console.log(`✅ ${savedCount} ürün detayı veritabanına kaydedildi`);
+            logger.info("${savedCount} ürün detayı veritabanına kaydedildi");
             resolve(savedCount);
           }
         });
@@ -697,12 +682,12 @@ class StradivariusService {
         `SELECT DISTINCT product_id FROM stradivarius_unique_products ORDER BY product_id`,
         (err, rows) => {
           if (err) {
-            console.error("❌ Ürün ID'leri yükleme hatası:", err.message);
+            logger.error("Ürün ID leri yükleme hatası:", err.message);
             reject(err);
           } else {
             const productIds = rows.map((row) => row.product_id);
-            console.log(
-              `✅ Stradivarius unique products tablosundan ${productIds.length} unique ürün ID'si yüklendi`
+            logger.info(
+              ` Stradivarius unique products tablosundan ${productIds.length} unique ürün ID'si yüklendi`
             );
             resolve(productIds);
           }
@@ -714,8 +699,8 @@ class StradivariusService {
   async scrapeAllProductDetails() {
     try {
       const startTime = Date.now();
-      console.log(
-        "🚀 Stradivarius ürün detayları scraping başlatılıyor (BATCH MODE)..."
+      logger.info(
+        " Stradivarius ürün detayları scraping başlatılıyor (BATCH MODE)..."
       );
 
       const allProductIds = await this.loadProductIdsFromDatabase();
@@ -724,8 +709,8 @@ class StradivariusService {
         throw new Error("Veritabanında ürün ID'si bulunamadı");
       }
 
-      console.log(
-        `📊 Toplam ${allProductIds.length} ürün, ${this.batchSize}'lük batch'ler halinde işlenecek...`
+      logger.info(
+        ` Toplam ${allProductIds.length} ürün, ${this.batchSize}'lük batch'ler halinde işlenecek...`
       );
 
       const batches = [];
@@ -733,7 +718,7 @@ class StradivariusService {
         batches.push(allProductIds.slice(i, i + this.batchSize));
       }
 
-      console.log(`📦 ${batches.length} batch oluşturuldu`);
+      logger.info("� ${batches.length} batch oluşturuldu");
 
       let totalProcessed = 0;
       let totalSaved = 0;
@@ -742,43 +727,43 @@ class StradivariusService {
         const batchProductIds = batches[batchIndex];
         const batchNum = batchIndex + 1;
 
-        console.log(
-          `\n🔄 BATCH ${batchNum}/${batches.length} işleniyor (${batchProductIds.length} ürün)...`
+        logger.info(
+          `\n BATCH ${batchNum}/${batches.length} işleniyor (${batchProductIds.length} ürün)...`
         );
 
         try {
           const batchProducts = await this.getProductDetails(batchProductIds);
-          console.log(
-            `📦 Batch ${batchNum}: ${batchProducts.length}/${batchProductIds.length} ürün API'den alındı`
+          logger.info(
+            ` Batch ${batchNum}: ${batchProducts.length}/${batchProductIds.length} ürün API'den alındı`
           );
 
           const batchProcessedProducts =
             await this._processProductsWithUniqueColors(batchProducts);
-          console.log(
-            `🎨 Batch ${batchNum}: ${batchProcessedProducts.length} ürün işlendi`
+          logger.info(
+            ` Batch ${batchNum}: ${batchProcessedProducts.length} ürün işlendi`
           );
 
           if (batchProcessedProducts.length > 0) {
             const batchSavedCount = await this.saveUniqueProductDetails(
               batchProcessedProducts
             );
-            console.log(
-              `💾 Batch ${batchNum}: ${batchSavedCount} ürün DB'ye kaydedildi`
+            logger.info(
+              ` Batch ${batchNum}: ${batchSavedCount} ürün DB'ye kaydedildi`
             );
 
             totalProcessed += batchProcessedProducts.length;
             totalSaved += batchSavedCount;
           }
         } catch (batchError) {
-          console.error(`❌ Batch ${batchNum} hatası:`, batchError.message);
-          console.log(
+          logger.error("Batch ${batchNum} hatası: batchError.message");
+          logger.info(
             `⏭️ Batch ${batchNum} atlanıyor, diğer batch'lere geçiliyor...`
           );
           continue;
         }
 
         if (batchIndex < batches.length - 1) {
-          console.log("⏳ Batch'ler arası 2 saniye bekleniyor...");
+          logger.info("Batch ler arası 2 saniye bekleniyor...");
           await this._delay(this.batchDelay);
         }
       }
@@ -795,13 +780,13 @@ class StradivariusService {
         timestamp: new Date().toISOString(),
       };
 
-      console.log("\n🎉 BATCH MODE scraping tamamlandı!");
-      console.log("📊 Sonuç:", result);
+      logger.info("\n BATCH MODE scraping tamamlandı!");
+      logger.info("Sonuç: result");
 
       return result;
     } catch (error) {
-      console.error(
-        "❌ Stradivarius ürün detayları scraping hatası:",
+      logger.error(
+        " Stradivarius ürün detayları scraping hatası:",
         error.message
       );
       return {
@@ -815,9 +800,9 @@ class StradivariusService {
   async scrapeAll() {
     try {
       const startTime = Date.now();
-      console.log("🚀 Stradivarius tam scraping başlatılıyor...");
+      logger.info("Stradivarius tam scraping başlatılıyor...");
 
-      console.log("📂 1. AŞAMA: Kategoriler çekiliyor...");
+      logger.info("� 1. AŞAMA: Kategoriler çekiliyor...");
       const categories = await this.getAllCategories();
 
       if (categories.length === 0) {
@@ -826,14 +811,14 @@ class StradivariusService {
 
       await this.saveCategoriesWithProducts(categories);
 
-      console.log("🔍 2. AŞAMA: Kategorilerden ürün ID'leri çekiliyor...");
+      logger.debug("2. AŞAMA: Kategorilerden ürün ID leri çekiliyor...");
       const allProductIds = new Set();
       const categoriesWithProducts = [];
 
       for (let i = 0; i < categories.length; i++) {
         const category = categories[i];
-        console.log(
-          `📂 ${i + 1}/${categories.length} - "${
+        logger.info(
+          ` ${i + 1}/${categories.length} - "${
             category.category_name
           }" kategorisi işleniyor...`
         );
@@ -853,16 +838,16 @@ class StradivariusService {
             productIds: categoryProductIds,
           });
 
-          console.log(
-            `   ✅ ${categoryProductIds.length} ürün ID'si eklendi (Toplam benzersiz: ${allProductIds.size})`
+          logger.info(
+            `    ${categoryProductIds.length} ürün ID'si eklendi (Toplam benzersiz: ${allProductIds.size})`
           );
 
           if (i < categories.length - 1) {
             await this._delay(this.delay);
           }
         } catch (error) {
-          console.error(
-            `   ❌ Kategori ${category.category_id} hatası: ${error.message}`
+          logger.error(
+            `    Kategori ${category.category_id} hatası: ${error.message}`
           );
           categoriesWithProducts.push({
             ...category,
@@ -872,15 +857,15 @@ class StradivariusService {
       }
 
       const uniqueProductIds = Array.from(allProductIds);
-      console.log(`🎯 Toplam benzersiz ürün: ${uniqueProductIds.length}`);
+      logger.info("� Toplam benzersiz ürün: ${uniqueProductIds.length}");
 
       await this.saveUniqueProducts(uniqueProductIds, categoriesWithProducts);
 
-      console.log(
-        "🎨 3. AŞAMA: Ürün detayları ve renk varyantları çekiliyor (BATCH MODE)..."
+      logger.info(
+        " 3. AŞAMA: Ürün detayları ve renk varyantları çekiliyor (BATCH MODE)..."
       );
-      console.log(
-        `📦 ${uniqueProductIds.length} ürün, ${this.batchSize}'lük batch'ler halinde işlenecek...`
+      logger.info(
+        ` ${uniqueProductIds.length} ürün, ${this.batchSize}'lük batch'ler halinde işlenecek...`
       );
 
       const batches = [];
@@ -888,7 +873,7 @@ class StradivariusService {
         batches.push(uniqueProductIds.slice(i, i + this.batchSize));
       }
 
-      console.log(`📦 ${batches.length} batch oluşturuldu`);
+      logger.info("� ${batches.length} batch oluşturuldu");
 
       let allProcessedProducts = [];
       let totalSaved = 0;
@@ -897,57 +882,57 @@ class StradivariusService {
         const batchProductIds = batches[batchIndex];
         const batchNum = batchIndex + 1;
 
-        console.log(
-          `\n🔄 BATCH ${batchNum}/${batches.length} işleniyor (${batchProductIds.length} ürün)...`
+        logger.info(
+          `\n BATCH ${batchNum}/${batches.length} işleniyor (${batchProductIds.length} ürün)...`
         );
 
         try {
           const batchProducts = await this.getProductDetails(batchProductIds);
-          console.log(
-            `📦 Batch ${batchNum}: ${batchProducts.length}/${batchProductIds.length} ürün API'den alındı`
+          logger.info(
+            ` Batch ${batchNum}: ${batchProducts.length}/${batchProductIds.length} ürün API'den alındı`
           );
 
           const batchProcessedProducts =
             await this._processProductsWithUniqueColors(batchProducts);
-          console.log(
-            `🎨 Batch ${batchNum}: ${batchProcessedProducts.length} ürün işlendi`
+          logger.info(
+            ` Batch ${batchNum}: ${batchProcessedProducts.length} ürün işlendi`
           );
 
           if (batchProcessedProducts.length > 0) {
             const batchSavedCount = await this.saveUniqueProductDetails(
               batchProcessedProducts
             );
-            console.log(
-              `💾 Batch ${batchNum}: ${batchSavedCount} ürün DB'ye kaydedildi`
+            logger.info(
+              ` Batch ${batchNum}: ${batchSavedCount} ürün DB'ye kaydedildi`
             );
 
             allProcessedProducts.push(...batchProcessedProducts);
             totalSaved += batchSavedCount;
           }
         } catch (batchError) {
-          console.error(`❌ Batch ${batchNum} hatası:`, batchError.message);
-          console.log(
+          logger.error("Batch ${batchNum} hatası: batchError.message");
+          logger.info(
             `⏭️ Batch ${batchNum} atlanıyor, diğer batch'lere geçiliyor...`
           );
           continue;
         }
 
         if (batchIndex < batches.length - 1) {
-          console.log("⏳ Batch'ler arası 2 saniye bekleniyor...");
+          logger.info("Batch ler arası 2 saniye bekleniyor...");
           await this._delay(this.batchDelay);
         }
       }
 
       const processedProducts = allProcessedProducts;
       const savedDetailsCount = totalSaved;
-      console.log("🔍 Eksik ürün kontrolü yapılıyor...");
+      logger.debug("Eksik ürün kontrolü yapılıyor...");
       const expectedCount = uniqueProductIds.length;
       const actualCount = processedProducts.length;
       const missingCount = expectedCount - actualCount;
 
       if (missingCount > 0) {
-        console.log(
-          `⚠️ ${missingCount} ürün eksik! Eksik ürünler tespit ediliyor...`
+        logger.info(
+          `️ ${missingCount} ürün eksik! Eksik ürünler tespit ediliyor...`
         );
 
         const processedIds = new Set(
@@ -957,7 +942,7 @@ class StradivariusService {
           (id) => !processedIds.has(id.toString())
         );
 
-        console.log(`🔄 ${missingIds.length} eksik ürün yeniden işleniyor...`);
+        logger.info("� ${missingIds.length} eksik ürün yeniden işleniyor...");
 
         if (missingIds.length > 0) {
           const missingProducts = await this.getProductDetails(missingIds);
@@ -968,12 +953,12 @@ class StradivariusService {
             missingProcessed
           );
 
-          console.log(
-            `✅ ${missingSavedCount} eksik ürün başarıyla tamamlandı!`
+          logger.info(
+            ` ${missingSavedCount} eksik ürün başarıyla tamamlandı!`
           );
         }
       } else {
-        console.log(`✅ Tüm ürünler başarıyla işlendi, eksik ürün yok!`);
+        logger.info("Tüm ürünler başarıyla işlendi, eksik ürün yok!");
       }
 
       const endTime = Date.now();
@@ -990,12 +975,12 @@ class StradivariusService {
         timestamp: new Date().toISOString(),
       };
 
-      console.log("🎉 Stradivarius scraping tamamlandı!");
-      console.log("📊 ÖZET SONUÇ:", result);
+      logger.info("Stradivarius scraping tamamlandı!");
+      logger.info("ÖZET SONUÇ: result");
 
       return result;
     } catch (error) {
-      console.error("❌ Stradivarius scraping hatası:", error.message);
+      logger.error("Stradivarius scraping hatası:", error.message);
       return {
         success: false,
         error: error.message,
@@ -1006,7 +991,7 @@ class StradivariusService {
 
   _chunkArray(array, chunkSize) {
     if (!array || !Array.isArray(array)) {
-      console.warn("⚠️ _chunkArray: Invalid array parameter");
+      logger.warn("_chunkArray: Invalid array parameter");
       return [];
     }
     const chunks = [];
@@ -1082,8 +1067,8 @@ class StradivariusService {
 
       return null;
     } catch (error) {
-      console.error(
-        `❌ Renk ${colorId} için fotoğraf bulma hatası:`,
+      logger.error(
+        ` Renk ${colorId} için fotoğraf bulma hatası:`,
         error.message
       );
       return null;
@@ -1103,34 +1088,34 @@ if (require.main === module) {
   const arg = process.argv[2];
 
   if (arg === "all") {
-    console.log("🔄 Stradivarius tam veri tarama başlatılıyor...");
+    logger.info("� Stradivarius tam veri tarama başlatılıyor...");
     service
       .scrapeAll()
       .then(() => {
-        console.log("✅ Stradivarius tam veri tarama tamamlandı.");
+        logger.info("Stradivarius tam veri tarama tamamlandı.");
         process.exit(0);
       })
       .catch((error) => {
-        console.error("❌ Stradivarius tarama hatası:", error);
+        logger.error("Stradivarius tarama hatası:", error);
         process.exit(1);
       });
   } else if (arg === "details") {
-    console.log("🔄 Stradivarius ürün detayları tarama başlatılıyor...");
+    logger.info("� Stradivarius ürün detayları tarama başlatılıyor...");
     service
       .scrapeAllProductDetails()
       .then(() => {
-        console.log("✅ Stradivarius ürün detayları tarama tamamlandı.");
+        logger.info("Stradivarius ürün detayları tarama tamamlandı.");
         process.exit(0);
       })
       .catch((error) => {
-        console.error("❌ Stradivarius ürün detayları tarama hatası:", error);
+        logger.error("Stradivarius ürün detayları tarama hatası:", error);
         process.exit(1);
       });
   } else {
-    console.log(
+    logger.info(
       "Kullanım: node services/stradivarius.service.js [all|details]"
     );
-    console.log("  all - Tüm kategoriler ve ürün ID'leri tara");
-    console.log("  details - Var olan ürün ID'leri için renk detayları tara");
+    logger.info("all - Tüm kategoriler ve ürün ID'leri tara");
+    logger.info("details - Var olan ürün ID'leri için renk detayları tara");
   }
 }

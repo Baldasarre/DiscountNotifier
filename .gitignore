@@ -14,16 +14,17 @@ public/4.jpg
 public/5.jpg
 public/6.jpg
 public/7.jpg
-test-results.md
-DEVELOPMENT.md
-ANALIZ_RAPORU.md
 ROADMAP.md
-BERSHKA_INTEGRATION.md
 test-bershka.json
 .claude/
-code-analysis-report.md
 backup/
-BUSINESS_OVERVIEW.md
-CODE_REVIEW_REPORT.md
-MOBILE_INTEGRATION_PLAN.md
 MD's
+teknik-analiz-raporu.md# Logs
+logs/
+*.log
+!logs/.gitkeep
+
+# Backups
+backups/
+*.db.backup
+*-backup-*.db

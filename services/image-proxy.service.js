@@ -1,4 +1,7 @@
 const axios = require("axios");
+const { createServiceLogger } = require("../utils/logger");
+
+const logger = createServiceLogger("image-proxy");
 class ImageProxyService {
   /**
    * Proxy an image request with appropriate headers

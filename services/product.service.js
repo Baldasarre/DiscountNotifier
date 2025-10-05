@@ -1,4 +1,7 @@
 const db = require("../config/database");
+const { createServiceLogger } = require("../utils/logger");
+
+const logger = createServiceLogger("product");
 
 class ProductService {
   constructor() {
@@ -87,7 +90,7 @@ class ProductService {
 
       db.all(query, params, (err, products) => {
         if (err) {
-          console.error("❌ Error fetching products:", err);
+          logger.error("Error fetching products:", err);
           return reject(err);
         }
 
@@ -101,7 +104,7 @@ class ProductService {
 
         db.get(countQuery, countParams, (err, countResult) => {
           if (err) {
-            console.error("❌ Error counting products:", err);
+            logger.error("Error counting products:", err);
             return reject(err);
           }
 
@@ -159,7 +162,7 @@ class ProductService {
 
       db.get(query, params, (err, product) => {
         if (err) {
-          console.error("❌ Error fetching product:", err);
+          logger.error("Error fetching product:", err);
           return reject(err);
         }
 
@@ -210,7 +213,7 @@ class ProductService {
 
       db.get(query, params, (err, product) => {
         if (err) {
-          console.error("❌ Error fetching product by ID:", err);
+          logger.error("Error fetching product by ID:", err);
           return reject(err);
         }
 
@@ -289,13 +292,11 @@ class ProductService {
 
       db.run(query, params, function (err) {
         if (err) {
-          console.error("❌ Error saving product:", err);
+          logger.error("Error saving product:", err);
           return reject(err);
         }
 
-        console.log(
-          `✅ Product saved: ${brand}/${product_id} (ID: ${this.lastID})`
-        );
+        logger.info(`Product saved: ${brand}/${product_id} (ID: ${this.lastID})`);
 
         resolve({
           success: true,
@@ -347,7 +348,7 @@ class ProductService {
 
         db.all(query, [], (err, stats) => {
           if (err) {
-            console.error("❌ Error fetching product stats:", err);
+            logger.error("Error fetching product stats:", err);
             return reject(err);
           }
 
@@ -394,7 +395,7 @@ class ProductService {
 
         db.all(query, [], (err, stats) => {
           if (err) {
-            console.error("❌ Error fetching product stats:", err);
+            logger.error("Error fetching product stats:", err);
             return reject(err);
           }
 
@@ -468,7 +469,7 @@ class ProductService {
         try {
           brandData = JSON.parse(product.brand_data);
         } catch (e) {
-          console.error("Invalid JSON in brand_data:", product.brand_data);
+          logger.error("Invalid JSON in brand_data:", product.brand_data);
           brandData = {};
         }
       } else if (typeof product.brand_data === "object") {
@@ -566,17 +567,11 @@ class ProductService {
 
       db.run(query, params, function (err) {
         if (err) {
-          console.error("❌ Error cleaning up old products:", err);
+          logger.error("Error cleaning up old products:", err);
           return reject(err);
         }
 
-        console.log(
-          "✅ Cleaned up " +
-            this.changes +
-            " old products (older than " +
-            daysOld +
-            " days)"
-        );
+        logger.info(`Cleaned up ${this.changes} old products (older than ${daysOld} days)`);
 
         resolve({
           success: true,
@@ -649,7 +644,7 @@ class ProductService {
 
     db.all(query, params, (err, products) => {
       if (err) {
-        console.error("❌ Error fetching products from all brands:", err);
+        logger.error("Error fetching products from all brands:", err);
         return reject(err);
       }
 
@@ -680,7 +675,7 @@ class ProductService {
 
       db.get(countQuery, countParams, (err, countResult) => {
         if (err) {
-          console.error("❌ Error counting products from all brands:", err);
+          logger.error("Error counting products from all brands:", err);
           return reject(err);
         }
 
