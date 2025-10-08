@@ -108,15 +108,19 @@ router.get("/stats", async (req, res) => {
 });
 
 router.get("/tracked", authenticate, async (req, res) => {
+  const startTime = Date.now();
   try {
     const userId = req.user.id;
     const result = await trackingService.getUserTrackedProducts(
       userId,
       req.query
     );
+    const responseTime = Date.now() - startTime;
+    logger.info(`⏱️ GET /tracked - ${responseTime}ms ${result.fromCache ? '(CACHE HIT)' : '(CACHE MISS)'}`);
     res.json(result);
   } catch (error) {
-    logger.error("Error fetching tracked products:", error);
+    const responseTime = Date.now() - startTime;
+    logger.error(`❌ GET /tracked - ${responseTime}ms - Error:`, error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch tracked products",
@@ -144,6 +148,7 @@ router.get("/tracking-count", authenticate, async (req, res) => {
 });
 
 router.post("/track", authenticate, async (req, res) => {
+  const startTime = Date.now();
   logger.info("��� TRACK ENDPOINT CALLED ���");
   try {
     const userId = req.user.id;
@@ -165,9 +170,12 @@ router.post("/track", authenticate, async (req, res) => {
       ` [ROUTES] Calling trackingService.trackProductByUrl(${userId}, ${productUrl})`
     );
     const result = await trackingService.trackProductByUrl(userId, productUrl);
+    const responseTime = Date.now() - startTime;
+    logger.info(`⏱️ POST /track - ${responseTime}ms`);
     res.json(result);
   } catch (error) {
-    logger.error("Error tracking product:", error);
+    const responseTime = Date.now() - startTime;
+    logger.error(`❌ POST /track - ${responseTime}ms - Error:`, error);
     res.status(500).json({
       success: false,
       message: error.message || "Failed to track product",

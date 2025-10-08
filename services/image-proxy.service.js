@@ -23,6 +23,8 @@ class ImageProxyService {
     const headers = {
       "User-Agent":
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "Accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+      "Accept-Encoding": "gzip, deflate, br",
     };
 
     if (url.startsWith("https://static.zara.net/")) {
@@ -33,11 +35,17 @@ class ImageProxyService {
       headers.Referer = "https://www.stradivarius.com/";
     }
 
+    const startTime = Date.now();
     const response = await axios.get(url, {
-      responseType: "stream",
+      responseType: "arraybuffer", // Buffer mode for smooth loading (no chunked transfer)
       headers: headers,
-      timeout: 10000,
+      timeout: 15000, // Increased timeout to 15s
+      maxRedirects: 5,
+      validateStatus: (status) => status >= 200 && status < 300,
     });
+
+    const duration = Date.now() - startTime;
+    logger.info(`🌐 Image download completed in ${duration}ms (${(response.data.length / 1024).toFixed(2)} KB)`);
 
     return {
       data: response.data,

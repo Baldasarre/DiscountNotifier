@@ -1078,6 +1078,51 @@ class StradivariusService {
   _delay(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
+
+  /**
+   * Fetch single product from API and save to DB
+   * @param {string} productId - Product ID
+   * @param {string} colorId - Color ID (optional)
+   * @returns {Promise<Object|null>} Formatted product or null
+   */
+  async fetchSingleProduct(productId, colorId = null) {
+    logger.info(`🔍 [API] Fetching single Stradivarius product: ${productId}`);
+
+    const startTime = Date.now();
+
+    try {
+      // 1. Fetch from API (1 elemanlı array)
+      const products = await this.getProductDetails([productId]);
+
+      if (!products || products.length === 0) {
+        logger.error(`❌ [API] Stradivarius product ${productId} not found`);
+        return null;
+      }
+
+      logger.info(`✅ [API] Product fetched in ${Date.now() - startTime}ms`);
+
+      // 2. Process with color variants
+      const processedProducts = await this._processProductsWithUniqueColors(products);
+
+      if (!processedProducts || processedProducts.length === 0) {
+        logger.error(`❌ [API] Failed to process product ${productId}`);
+        return null;
+      }
+
+      // 3. Save to DB
+      const savedCount = await this.saveUniqueProductDetails(processedProducts);
+      logger.info(`💾 Saved ${savedCount} color variant(s) to DB`);
+
+      logger.info(`⏱️ Total fetchSingleProduct time: ${Date.now() - startTime}ms`);
+
+      // Return first processed product (formatted for tracking)
+      return processedProducts[0];
+
+    } catch (error) {
+      logger.error(`❌ [API] Error fetching product ${productId}:`, error.message);
+      return null;
+    }
+  }
 }
 
 module.exports = StradivariusService;

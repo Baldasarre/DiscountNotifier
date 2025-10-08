@@ -1,13 +1,21 @@
 const db = require("../config/database");
 const productService = require("./product.service");
+const cacheManager = require("../utils/cache");
 const { createServiceLogger } = require("../utils/logger");
 
 const logger = createServiceLogger("tracking");
 
 class TrackingService {
   constructor() {
-    this.maxTrackedPerUser = 9;
+    this.maxTrackedPerUser = 10;
     this.supportedBrands = ["zara", "bershka", "stradivarius"];
+
+    // Brand to table mapping for dynamic JOINs
+    this.brandTableMap = {
+      zara: "zara_products",
+      bershka: "bershka_unique_product_details",
+      stradivarius: "stradivarius_unique_product_details"
+    };
   }
 
   /**
@@ -19,7 +27,7 @@ class TrackingService {
   async handleBershkaProductMatching(productId, colorId = null) {
     logger.info("[BERSHKA] handleBershkaProductMatching - productId: ${productId}, colorId: ${colorId}");
 
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       // First, try to find the product with the main product ID
       const query = "SELECT * FROM bershka_unique_product_details WHERE product_id = ?";
 
@@ -30,12 +38,56 @@ class TrackingService {
         }
 
         if (!baseProduct) {
-          logger.error("[BERSHKA] No product found with ID: ${productId}");
-          return resolve({
-            success: false,
-            message: `Product with ID ${productId} not found in database`,
-            productId: null
-          });
+          logger.info("📡 [BERSHKA] Product not in DB, attempting API fetch...");
+
+          try {
+            // Try fetching from API
+            const apiProduct = await this.fetchProductFromAPI("bershka", productId, colorId);
+
+            if (apiProduct) {
+              logger.info(`✅ [BERSHKA] Product ${productId} fetched from API`);
+
+              // Reload from DB to get consistent format
+              db.get(query, [productId], (err2, reloadedProduct) => {
+                if (err2) {
+                  logger.error("[BERSHKA] Error reloading product:", err2);
+                  return reject(err2);
+                }
+
+                if (reloadedProduct) {
+                  logger.info("[BERSHKA] Found product after API fetch: ${reloadedProduct.name}");
+
+                  // Return the fetched product (API already handled color variants)
+                  return resolve({
+                    success: true,
+                    product: reloadedProduct,
+                    productId: reloadedProduct.product_id
+                  });
+                } else {
+                  return resolve({
+                    success: false,
+                    message: `Product ${productId} fetched but not found in DB after save`,
+                    productId: null
+                  });
+                }
+              });
+              return; // Exit early to avoid double resolution
+            } else {
+              logger.error("[BERSHKA] API fetch failed for ${productId}");
+              return resolve({
+                success: false,
+                message: `Product with ID ${productId} not found in database or API`,
+                productId: null
+              });
+            }
+          } catch (apiError) {
+            logger.error("[BERSHKA] API fetch error:", apiError.message);
+            return resolve({
+              success: false,
+              message: `Failed to fetch product from API: ${apiError.message}`,
+              productId: null
+            });
+          }
         }
 
         logger.info("[BERSHKA] Found base product: ${baseProduct.name}, color_id: ${baseProduct.color_id}");
@@ -213,31 +265,71 @@ class TrackingService {
   async handleStradivariusProductLookup(productId) {
     logger.info("[STRADIVARIUS] handleStradivariusProductLookup - productId: ${productId}");
 
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       const query = "SELECT * FROM stradivarius_unique_product_details WHERE product_id = ?";
 
-      db.get(query, [productId], (err, product) => {
+      db.get(query, [productId], async (err, product) => {
         if (err) {
           logger.error("[STRADIVARIUS] Database error:", err);
           return reject(err);
         }
 
         if (!product) {
-          logger.error("[STRADIVARIUS] No product found with ID: ${productId}");
-          return resolve({
-            success: false,
-            message: `Product with ID ${productId} not found in database`,
-            productId: null
+          logger.info("📡 [STRADIVARIUS] Product not in DB, attempting API fetch...");
+
+          try {
+            // Try fetching from API
+            const apiProduct = await this.fetchProductFromAPI("stradivarius", productId, null);
+
+            if (apiProduct) {
+              logger.info(`✅ [STRADIVARIUS] Product ${productId} fetched from API`);
+
+              // Reload from DB to get consistent format
+              db.get(query, [productId], (err2, reloadedProduct) => {
+                if (err2) {
+                  logger.error("[STRADIVARIUS] Error reloading product:", err2);
+                  return reject(err2);
+                }
+
+                if (reloadedProduct) {
+                  logger.info("[STRADIVARIUS] Found product after API fetch: ${reloadedProduct.name}");
+                  return resolve({
+                    success: true,
+                    product: reloadedProduct,
+                    productId: reloadedProduct.product_id
+                  });
+                } else {
+                  return resolve({
+                    success: false,
+                    message: `Product ${productId} fetched but not found in DB after save`,
+                    productId: null
+                  });
+                }
+              });
+            } else {
+              logger.error("[STRADIVARIUS] API fetch failed for ${productId}");
+              return resolve({
+                success: false,
+                message: `Product with ID ${productId} not found in database or API`,
+                productId: null
+              });
+            }
+          } catch (apiError) {
+            logger.error("[STRADIVARIUS] API fetch error:", apiError.message);
+            return resolve({
+              success: false,
+              message: `Failed to fetch product from API: ${apiError.message}`,
+              productId: null
+            });
+          }
+        } else {
+          logger.info("[STRADIVARIUS] Found product: ${product.name}, ID: ${product.product_id}");
+          resolve({
+            success: true,
+            product: product,
+            productId: product.product_id
           });
         }
-
-        logger.info("[STRADIVARIUS] Found product: ${product.name}, ID: ${product.product_id}");
-
-        resolve({
-          success: true,
-          product: product,
-          productId: product.product_id
-        });
       });
     });
   }
@@ -308,7 +400,14 @@ class TrackingService {
           }
 
           try {
-            const currentCount = await this.getUserTrackingCount(userId);
+            // Save 'this' context for setImmediate callbacks
+            const self = this;
+
+            // Parallel fetch: count + product (optimization)
+            const [currentCount, product] = await Promise.all([
+              this.getUserTrackingCount(userId),
+              productService.getProductById(productId, brand)
+            ]);
 
             if (currentCount >= this.maxTrackedPerUser) {
               db.run("ROLLBACK");
@@ -319,9 +418,56 @@ class TrackingService {
               });
             }
 
-            let product = await productService.getProductById(productId, brand);
+            let finalProduct = product;
 
-            if (!product) {
+            // If product not in DB, try fetching from API (Bershka/Stradivarius only)
+            if (!finalProduct) {
+              logger.info(
+                `📡 Product ${productId} not found in DB, attempting API fetch for ${brand}`
+              );
+
+              try {
+                const apiProduct = await this.fetchProductFromAPI(
+                  brand,
+                  productId,
+                  customSettings?.colorId
+                );
+
+                if (apiProduct) {
+                  logger.info(
+                    `✅ Product ${productId} fetched from API and saved to DB`
+                  );
+                  // Use API product directly (no need to reload from DB - ~50ms saved)
+                  finalProduct = apiProduct;
+                  logger.info(`⚡ Optimization: Skipped DB reload, using API product directly`);
+                } else {
+                  db.run("ROLLBACK");
+                  return resolve({
+                    success: false,
+                    message:
+                      brand === "zara"
+                        ? "Zara products must be pre-scraped. Product not found in catalog."
+                        : `Failed to fetch ${brand} product from API. Product may not exist.`,
+                    productId,
+                    brand,
+                  });
+                }
+              } catch (apiError) {
+                logger.error(
+                  `❌ API fetch failed for ${brand} ${productId}:`,
+                  apiError.message
+                );
+                db.run("ROLLBACK");
+                return resolve({
+                  success: false,
+                  message: `Failed to fetch product from API: ${apiError.message}`,
+                  productId,
+                  brand,
+                });
+              }
+            }
+
+            if (!finalProduct) {
               db.run("ROLLBACK");
               return resolve({
                 success: false,
@@ -392,7 +538,7 @@ class TrackingService {
                     });
                   });
 
-                  product = await productService.getProductById(
+                  finalProduct = await productService.getProductById(
                     productId,
                     brand
                   );
@@ -409,212 +555,29 @@ class TrackingService {
               }
             }
 
+            // STRADIVARIUS: Schedule background detail fetch (non-blocking)
             if (brand === "stradivarius") {
-              logger.info(
-                ` [TRACKING] Fetching Stradivarius detail from unique details table...`
-              );
+              const colorId = customSettings?.colorId;
 
-              try {
-                const colorId = customSettings?.colorId;
-                const stradUniqueId = colorId
-                  ? `${productId}_${colorId}`
-                  : `${productId}_default`;
-
-                logger.info(
-                  ` [TRACKING] Looking for Stradivarius unique product: ${stradUniqueId}`
-                );
-
-                const detailProduct = await new Promise((resolve, reject) => {
-                  const db = require("../config/database");
-                  db.get(
-                    "SELECT * FROM stradivarius_unique_product_details WHERE unique_id = ?",
-                    [stradUniqueId],
-                    (err, row) => {
-                      if (err) reject(err);
-                      else resolve(row);
-                    }
-                  );
+              // Schedule async update (don't await - fire and forget)
+              setImmediate(() => {
+                self.updateStradivariusDetailAsync(productId, colorId).catch(err => {
+                  logger.error(`Background Stradivarius update failed for ${productId}:`, err.message);
                 });
+              });
 
-                if (detailProduct) {
-                  logger.info(
-                    ` [TRACKING] Found Stradivarius detail: ${detailProduct.name}, Price: ${detailProduct.price}`
-                  );
-
-                  const updateQuery =
-                    "UPDATE stradivarius_unique_product_details SET price = ?, image_url = ?, name = ?, last_updated = ? WHERE product_id = ?";
-                  const params = [
-                    detailProduct.price,
-                    detailProduct.image_url,
-                    detailProduct.name,
-                    new Date().toISOString(),
-                    productId,
-                  ];
-
-                  await new Promise((resolve, reject) => {
-                    const db = require("../config/database");
-                    db.run(updateQuery, params, function (err) {
-                      if (err) {
-                        logger.error(
-                          ` [TRACKING] Failed to update Stradivarius product ${productId}:`,
-                          err
-                        );
-                        reject(err);
-                      } else {
-                        logger.info(
-                          ` [TRACKING] Updated Stradivarius product ${productId} with detail info`
-                        );
-                        resolve();
-                      }
-                    });
-                  });
-
-                  product = await productService.getProductById(
-                    productId,
-                    brand
-                  );
-                } else {
-                  logger.info(
-                    `️ [TRACKING] No detail found for Stradivarius unique ID: ${stradUniqueId}`
-                  );
-
-                  if (
-                    !product.image ||
-                    !product.image.startsWith("https://") ||
-                    !product.price
-                  ) {
-                    logger.info(
-                      ` [TRACKING] Fallback: Fetching Stradivarius detail from API...`
-                    );
-
-                    const stradivariusService = require("../services/stradivarius.service");
-                    const service = new stradivariusService();
-
-                    const detailResult = await service.getProductDetail(
-                      productId
-                    );
-                    let imageUrl = null;
-                    let productPrice = null;
-
-                    if (detailResult.success) {
-                      logger.info(
-                        ` [TRACKING] Using color ID for image matching: ${colorId}`
-                      );
-                      imageUrl = await service._getProductImageFromDetail(
-                        productId,
-                        colorId
-                      );
-
-                      if (
-                        detailResult.fullResponse.bundleProductSummaries &&
-                        detailResult.fullResponse.bundleProductSummaries
-                          .length > 0
-                      ) {
-                        const bundle =
-                          detailResult.fullResponse.bundleProductSummaries[0];
-                        if (
-                          bundle.detail &&
-                          bundle.detail.colors &&
-                          bundle.detail.colors.length > 0
-                        ) {
-                          const firstColor = bundle.detail.colors[0];
-                          if (
-                            firstColor.sizes &&
-                            firstColor.sizes.length > 0 &&
-                            firstColor.sizes[0].price
-                          ) {
-                            productPrice = parseInt(firstColor.sizes[0].price);
-                            logger.info(
-                              ` [TRACKING] Found Stradivarius price for ${productId}: ${productPrice} kuruş (${(
-                                productPrice / 100
-                              ).toFixed(2)} TL)`
-                            );
-                          }
-                        }
-                      }
-                    }
-
-                    let updateQuery =
-                      "UPDATE stradivarius_unique_product_details SET last_updated = ?";
-                    let params = [new Date().toISOString()];
-
-                    if (imageUrl) {
-                      updateQuery =
-                        "UPDATE stradivarius_unique_product_details SET image_url = ?, last_updated = ?";
-                      params = [imageUrl, new Date().toISOString()];
-                      logger.info(
-                        ` [TRACKING] Found Stradivarius media URL for ${productId}: ${imageUrl}`
-                      );
-                    }
-
-                    if (productPrice) {
-                      updateQuery = updateQuery.replace(
-                        "last_updated = ?",
-                        "price = ?, last_updated = ?"
-                      );
-                      params.splice(-1, 0, productPrice);
-                      logger.info(
-                        ` [TRACKING] Found Stradivarius price for ${productId}: ${(
-                          productPrice / 100
-                        ).toFixed(2)} TL`
-                      );
-                    }
-
-                    updateQuery += " WHERE product_id = ?";
-                    params.push(productId);
-
-                    await new Promise((resolve, reject) => {
-                      db.run(updateQuery, params, function (err) {
-                        if (err) {
-                          logger.error(
-                            ` [TRACKING] Failed to update Stradivarius product ${productId}:`,
-                            err
-                          );
-                          reject(err);
-                        } else {
-                          logger.info(
-                            ` [TRACKING] Updated Stradivarius product ${productId} with detail info`
-                          );
-                          resolve();
-                        }
-                      });
-                    });
-
-                    product = await productService.getProductById(
-                      productId,
-                      brand
-                    );
-                  }
-                }
-              } catch (detailError) {
-                logger.error(
-                  `️ [TRACKING] Failed to fetch Stradivarius detail for ${productId}:`,
-                  detailError.message
-                );
-              }
+              logger.info(`⚡ Stradivarius detail update scheduled in background for ${productId}`);
             }
 
-            logger.info(
-              ` [TRACKING] Product data before ensureProductInUnified:`,
-              {
-                id: product.id,
-                product_id: product.product_id,
-                name: product.name,
-                price: product.price,
-                image_url: product.image_url?.substring(0, 50) + "...",
-              }
-            );
-            const unifiedProductId = await this.ensureProductInUnified(
-              product,
-              brand
-            );
-
+            // Check if already tracking this product
             const existingTracking = await this.getTrackingRecord(
               userId,
-              unifiedProductId
+              brand,
+              productId
             );
 
             if (existingTracking) {
+              // Update existing tracking
               const updateResult = await this.updateTrackingRecord(
                 existingTracking.id,
                 {
@@ -626,34 +589,56 @@ class TrackingService {
                 }
               );
 
-              db.run("COMMIT", (err) => {
+              db.run("COMMIT", async (err) => {
                 if (err) {
                   return reject(err);
                 }
 
-                resolve({
-                  success: true,
-                  message: "Product tracking updated",
-                  product: product,
-                  trackingId: existingTracking.id,
-                  isUpdate: true,
-                });
+                logger.info(
+                  `✅ Product tracking updated: User ${userId} -> ${brand}/${productId}`
+                );
+
+                // Invalidate cache immediately and warm it up synchronously
+                cacheManager.invalidateUserTracking(userId);
+
+                // Warm cache synchronously before responding
+                self.getUserTrackedProducts(userId, { forceRefresh: true })
+                  .then(() => {
+                    resolve({
+                      success: true,
+                      message: "Product tracking updated",
+                      product: finalProduct,
+                      trackingId: existingTracking.id,
+                      isUpdate: true,
+                    });
+                  })
+                  .catch(e => {
+                    logger.error(`Cache warming failed for ${userId}:`, e.message);
+                    // Still resolve even if cache warming fails
+                    resolve({
+                      success: true,
+                      message: "Product tracking updated",
+                      product: finalProduct,
+                      trackingId: existingTracking.id,
+                      isUpdate: true,
+                    });
+                  });
               });
             } else {
+              // Insert new tracking record (directly to user_tracked_products)
               const insertQuery = `
-                INSERT INTO user_tracked_products_unified (
-                  user_id, product_id, unique_tracking_id, tracking_started_at,
+                INSERT INTO user_tracked_products (
+                  user_id, brand, product_id, tracking_started_at,
                   last_checked, notification_enabled, price_alert_threshold,
                   stock_alert, custom_settings
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
               `;
 
               const now = new Date().toISOString();
-              const uniqueTrackingId = `${userId}-${unifiedProductId}-${Date.now()}`;
               const params = [
                 userId,
-                unifiedProductId,
-                uniqueTrackingId,
+                brand,
+                productId,
                 now,
                 now,
                 notificationEnabled ? 1 : 0,
@@ -669,23 +654,42 @@ class TrackingService {
                   return reject(err);
                 }
 
-                db.run("COMMIT", (err) => {
+                db.run("COMMIT", async (err) => {
                   if (err) {
                     return reject(err);
                   }
 
                   logger.info(
-                    ` Product tracking added: User ${userId} -> ${brand}/${productId} (unified ID: ${unifiedProductId})`
+                    `✅ Product tracking added: User ${userId} -> ${brand}/${productId}`
                   );
 
-                  resolve({
-                    success: true,
-                    message: "Product successfully added to tracking list",
-                    product: product,
-                    trackingId: this.lastID,
-                    isUpdate: false,
-                    currentCount: currentCount + 1,
-                  });
+                  // Invalidate cache immediately and warm it up synchronously
+                  cacheManager.invalidateUserTracking(userId);
+
+                  // Warm cache synchronously before responding
+                  self.getUserTrackedProducts(userId, { forceRefresh: true })
+                    .then(() => {
+                      resolve({
+                        success: true,
+                        message: "Product successfully added to tracking list",
+                        product: finalProduct,
+                        trackingId: this.lastID,
+                        isUpdate: false,
+                        currentCount: currentCount + 1,
+                      });
+                    })
+                    .catch(e => {
+                      logger.error(`Cache warming failed for ${userId}:`, e.message);
+                      // Still resolve even if cache warming fails
+                      resolve({
+                        success: true,
+                        message: "Product successfully added to tracking list",
+                        product: finalProduct,
+                        trackingId: this.lastID,
+                        isUpdate: false,
+                        currentCount: currentCount + 1,
+                      });
+                    });
                 });
               });
             }
@@ -699,124 +703,102 @@ class TrackingService {
   }
 
   /**
-   * Ensure product exists in unified table and return its unified ID
-   * @param {Object} product - Product data
-   * @param {string} brand - Brand name
-   * @returns {Promise<number>} Unified product ID
-   */
-  async ensureProductInUnified(product, brand) {
-    return new Promise((resolve, reject) => {
-      const checkQuery =
-        "SELECT id FROM products_unified WHERE product_id = ? AND brand = ?";
-
-      db.get(
-        checkQuery,
-        [product.product_id || product.id, brand],
-        (err, existing) => {
-          if (err) {
-            return reject(err);
-          }
-
-          if (existing) {
-            logger.info(
-              ` Product ${
-                product.id || product.product_id
-              } already exists in unified table with ID: ${existing.id}`
-            );
-            return resolve(existing.id);
-          }
-
-          const insertQuery = `
-          INSERT INTO products_unified (
-            brand, product_id, name, price, sale_price, currency,
-            image_url, product_url, availability, brand_data,
-            last_updated, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
-
-          const now = new Date().toISOString();
-          const params = [
-            brand,
-            product.product_id || product.id,
-            product.title || product.name,
-            product.price,
-            product.salePrice ||
-              product.sale_price ||
-              product.oldPrice ||
-              product.old_price,
-            product.currency || "TL",
-            product.imageUrl || product.image_url || product.image,
-            product.url || product.product_url,
-            product.availability || "unknown",
-            JSON.stringify(product.brandData || product.brand_data || {}),
-            now,
-            now,
-          ];
-
-          db.run(insertQuery, params, function (err) {
-            if (err) {
-              logger.error(
-                ` Error inserting product into unified table:`,
-                err
-              );
-              return reject(err);
-            }
-
-            logger.info(
-              ` Inserted ${brand} product ${
-                product.id || product.product_id
-              } into unified table with ID: ${this.lastID}`
-            );
-            resolve(this.lastID);
-          });
-        }
-      );
-    });
-  }
-
-  /**
-   * Get all products tracked by user (from unified table only)
+   * Get all products tracked by user (with cache + direct JOIN to brand tables)
    * @param {string} userId - User ID
    * @param {Object} options - Query options
    * @param {string} options.brand - Filter by brand
    * @param {string} options.sortBy - Sort field
    * @param {string} options.sortOrder - Sort order
+   * @param {boolean} options.forceRefresh - Skip cache
    * @returns {Promise<Object>} User's tracked products
    */
   async getUserTrackedProducts(userId, options = {}) {
     const {
       brand,
       sortBy = "tracking_started_at",
-      sortOrder = "DESC",
+      sortOrder = "ASC",
+      forceRefresh = false,
     } = options;
 
-    return new Promise((resolve, reject) => {
-      let query = `
-        SELECT 
-          utp.*,
-          p.brand,
-          p.product_id,
-          p.name,
-          p.price,
-          p.sale_price,
-          p.currency,
-          p.image_url,
-          p.product_url,
-          p.availability,
-          p.brand_data,
-          p.last_updated as product_last_updated
-        FROM user_tracked_products_unified utp
-        JOIN products_unified p ON utp.product_id = p.id
-        WHERE utp.user_id = ?
-      `;
+    // 1. Check cache first (unless forceRefresh)
+    if (!forceRefresh) {
+      const cached = cacheManager.getCachedUserTracking(userId);
 
-      const params = [userId];
+      if (cached) {
+        logger.debug(`📦 Cache HIT for user ${userId}`);
 
-      if (brand) {
-        query += " AND p.brand = ?";
-        params.push(brand.toLowerCase());
+        // Apply brand filter if needed
+        let products = cached.products;
+        if (brand) {
+          products = products.filter((p) => p.brand === brand.toLowerCase());
+        }
+
+        return {
+          success: true,
+          products: products,
+          count: products.length,
+          maxAllowed: this.maxTrackedPerUser,
+          fromCache: true,
+        };
       }
 
+      logger.debug(`❌ Cache MISS for user ${userId}`);
+    }
+
+    // 2. Fetch from DB with UNION query
+    return new Promise((resolve, reject) => {
+      // Build UNION query for all brand tables
+      const queries = [];
+
+      this.supportedBrands.forEach((brandName) => {
+        const tableName = this.brandTableMap[brandName];
+
+        // Handle different column names across brand tables
+        let salePriveColumn, currencyColumn;
+
+        if (brandName === "zara") {
+          salePriveColumn = "p.sale_price";
+          currencyColumn = "'TL' as currency"; // Zara doesn't have currency column
+        } else {
+          // Bershka and Stradivarius use 'old_price'
+          salePriveColumn = "p.old_price as sale_price";
+          currencyColumn = "p.currency";
+        }
+
+        queries.push(`
+          SELECT
+            utp.id,
+            utp.user_id,
+            utp.brand,
+            utp.product_id,
+            utp.tracking_started_at,
+            utp.last_checked,
+            utp.notification_enabled,
+            utp.price_alert_threshold,
+            utp.stock_alert,
+            utp.custom_settings,
+            p.name,
+            p.price,
+            ${salePriveColumn},
+            ${currencyColumn},
+            p.image_url,
+            p.product_url,
+            p.availability,
+            p.last_updated as product_last_updated
+          FROM user_tracked_products utp
+          JOIN ${tableName} p ON utp.product_id = p.product_id
+          WHERE utp.user_id = ? AND utp.brand = '${brandName}'
+        `);
+      });
+
+      let query = queries.join(" UNION ALL ");
+
+      // Add brand filter if specified
+      if (brand) {
+        query = `SELECT * FROM (${query}) WHERE brand = ?`;
+      }
+
+      // Add sorting
       const validSortFields = [
         "tracking_started_at",
         "last_checked",
@@ -833,7 +815,12 @@ class TrackingService {
         ? sortOrder.toUpperCase()
         : "DESC";
 
-      query += ` ORDER BY utp.${validatedSortBy} ${validatedSortOrder}`;
+      query += ` ORDER BY ${validatedSortBy} ${validatedSortOrder}`;
+
+      // Parameters (userId for each brand in UNION)
+      const params = brand
+        ? [userId, userId, userId, brand.toLowerCase()]
+        : [userId, userId, userId];
 
       db.all(query, params, (err, rows) => {
         if (err) {
@@ -841,44 +828,58 @@ class TrackingService {
           return reject(err);
         }
 
+        // Format products (optimized - no formatProduct() overhead)
         const trackedProducts = rows.map((row) => {
-          const product = productService.formatProduct({
-            id: row.product_id,
-            brand: row.brand,
-            product_id: row.product_id,
-            name: row.name,
-            price: row.price,
-            sale_price: row.sale_price,
-            currency: row.currency,
-            image_url: row.image_url,
-            product_url: row.product_url,
-            availability: row.availability,
-            brand_data: row.brand_data,
-            last_updated: row.product_last_updated,
-          });
-
           let customSettings = {};
           if (row.custom_settings) {
-            if (typeof row.custom_settings === "string") {
-              try {
-                customSettings = JSON.parse(row.custom_settings);
-              } catch (e) {
-                logger.error(
-                  "Invalid JSON in custom_settings:",
-                  row.custom_settings
-                );
-                customSettings = {};
-              }
-            } else if (typeof row.custom_settings === "object") {
-              customSettings = row.custom_settings;
+            try {
+              customSettings =
+                typeof row.custom_settings === "string"
+                  ? JSON.parse(row.custom_settings)
+                  : row.custom_settings;
+            } catch (e) {
+              logger.error(
+                "Invalid JSON in custom_settings:",
+                row.custom_settings
+              );
             }
           }
 
+          // Convert image URL to proxied format
+          const proxyImageUrl = row.image_url
+            ? `/api/image-proxy?url=${encodeURIComponent(row.image_url)}`
+            : null;
+
           return {
-            ...product,
+            id: row.product_id,
+            brand: row.brand,
+            productId: row.product_id,
+            title: row.name,
+            name: row.name,
+            price: row.price,
+            salePrice: row.sale_price,
+            currency: row.currency || 'TL',
+            formattedPrice: row.price
+              ? (row.price / 100).toLocaleString("tr-TR", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                }) + " TL"
+              : "Fiyat yok",
+            formattedSalePrice: row.sale_price
+              ? (row.sale_price / 100).toLocaleString("tr-TR", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                }) + " " + (row.currency || 'TL')
+              : null,
+            image: proxyImageUrl,
+            imageUrl: proxyImageUrl,
+            url: row.product_url,
+            productUrl: row.product_url,
+            availability: row.availability,
+            inStock: row.availability === 'in_stock' || row.availability === 'available',
+            lastUpdated: row.product_last_updated,
             tracking: {
               id: row.id,
-              unique_tracking_id: row.unique_tracking_id,
               tracking_started_at: row.tracking_started_at,
               last_checked: row.last_checked,
               notification_enabled: !!row.notification_enabled,
@@ -889,29 +890,35 @@ class TrackingService {
           };
         });
 
-        logger.info(
-          ` Retrieved ${trackedProducts.length} tracked products for user ${userId}`
-        );
-
-        resolve({
+        const result = {
           success: true,
           products: trackedProducts,
           count: trackedProducts.length,
           maxAllowed: this.maxTrackedPerUser,
-        });
+          fromCache: false,
+        };
+
+        // 3. Cache the result (full result, not filtered)
+        cacheManager.setCachedUserTracking(userId, result);
+
+        logger.info(
+          `✅ Retrieved ${trackedProducts.length} tracked products for user ${userId}`
+        );
+
+        resolve(result);
       });
     });
   }
 
   /**
-   * Get user's tracking count (using unified tracking table)
+   * Get user's tracking count
    * @param {string} userId - User ID
    * @returns {Promise<number>} Count of tracked products
    */
   async getUserTrackingCount(userId) {
     return new Promise((resolve, reject) => {
       const query =
-        "SELECT COUNT(*) as count FROM user_tracked_products_unified WHERE user_id = ?";
+        "SELECT COUNT(*) as count FROM user_tracked_products WHERE user_id = ?";
 
       db.get(query, [userId], (err, result) => {
         if (err) {
@@ -927,15 +934,16 @@ class TrackingService {
   /**
    * Get tracking record
    * @param {string} userId - User ID
-   * @param {number} productId - Unified product ID
+   * @param {string} brand - Brand name
+   * @param {string} productId - Product ID
    * @returns {Promise<Object|null>} Tracking record
    */
-  async getTrackingRecord(userId, productId) {
+  async getTrackingRecord(userId, brand, productId) {
     return new Promise((resolve, reject) => {
       const query =
-        "SELECT * FROM user_tracked_products_unified WHERE user_id = ? AND product_id = ?";
+        "SELECT * FROM user_tracked_products WHERE user_id = ? AND brand = ? AND product_id = ?";
 
-      db.get(query, [userId, productId], (err, record) => {
+      db.get(query, [userId, brand, productId], (err, record) => {
         if (err) {
           logger.error("Error getting tracking record:", err);
           return reject(err);
@@ -987,7 +995,7 @@ class TrackingService {
         });
       }
 
-      const query = `UPDATE user_tracked_products_unified SET ${updateFields.join(
+      const query = `UPDATE user_tracked_products SET ${updateFields.join(
         ", "
       )} WHERE id = ?`;
       params.push(trackingId);
@@ -1065,24 +1073,23 @@ class TrackingService {
     return new Promise((resolve, reject) => {
       const queries = [
         // Total tracking records
-        "SELECT COUNT(*) as total_tracking FROM user_tracked_products_unified",
+        "SELECT COUNT(*) as total_tracking FROM user_tracked_products",
 
         // Tracking by brand
-        `SELECT p.brand, COUNT(*) as count 
-         FROM user_tracked_products_unified utp 
-         JOIN products_unified p ON utp.product_id = p.id 
-         GROUP BY p.brand`,
+        `SELECT brand, COUNT(*) as count
+         FROM user_tracked_products
+         GROUP BY brand`,
 
         // Active users (users with tracked products)
-        "SELECT COUNT(DISTINCT user_id) as active_users FROM user_tracked_products_unified",
+        "SELECT COUNT(DISTINCT user_id) as active_users FROM user_tracked_products",
 
         // Average products per user
-        `SELECT AVG(user_count) as avg_products_per_user 
-         FROM (SELECT user_id, COUNT(*) as user_count FROM user_tracked_products_unified GROUP BY user_id)`,
+        `SELECT AVG(user_count) as avg_products_per_user
+         FROM (SELECT user_id, COUNT(*) as user_count FROM user_tracked_products GROUP BY user_id)`,
 
         // Users at max limit
-        `SELECT COUNT(*) as users_at_max 
-         FROM (SELECT user_id, COUNT(*) as count FROM user_tracked_products_unified GROUP BY user_id HAVING count >= ?)`,
+        `SELECT COUNT(*) as users_at_max
+         FROM (SELECT user_id, COUNT(*) as count FROM user_tracked_products GROUP BY user_id HAVING count >= ?)`,
       ];
 
       let completed = 0;
@@ -1147,7 +1154,7 @@ class TrackingService {
 
     return new Promise((resolve, reject) => {
       const query =
-        "DELETE FROM user_tracked_products_unified WHERE last_checked < ?";
+        "DELETE FROM user_tracked_products WHERE last_checked < ?";
 
       db.run(query, [cutoffISO], function (err) {
         if (err) {
@@ -1431,15 +1438,13 @@ class TrackingService {
     };
 
     if (product.isPlaceholder) {
-      logger.info(
-        ` [TRACKING] Allowing placeholder tracking for ${brand} product ${productId}`
+      logger.warn(
+        `⚠️ [TRACKING] Rejecting placeholder tracking for ${brand} product ${productId} - product not in database`
       );
       return {
-        success: true,
-        message: "Product added to tracking (placeholder)",
-        product: product,
-        trackingUrl: productUrl,
-        productId: productId,
+        success: false,
+        message: `Bu ${brand === 'zara' ? 'Zara' : brand.charAt(0).toUpperCase() + brand.slice(1)} ürünü veritabanımızda bulunamadı. Lütfen farklı bir ürün deneyin.`,
+        error: "PRODUCT_NOT_FOUND"
       };
     }
 
@@ -1481,43 +1486,52 @@ class TrackingService {
   }
 
   /**
-   * Remove product from tracking (using unified tracking table)
+   * Remove product from tracking
    * @param {string} userId - User ID
-   * @param {string} productId - Product ID to untrack (this should be the original product_id, not unified ID)
+   * @param {string} productId - Product ID to untrack
+   * @param {string} brand - Brand name (optional, for faster lookup)
    * @returns {Promise<Object>} Untracking result
    */
-  async removeProductTracking(userId, productId) {
+  async removeProductTracking(userId, productId, brand = null) {
     return new Promise((resolve, reject) => {
-      logger.info(`[TRACKING] removeProductTracking called - userId: ${userId}, productId: ${productId}`);
+      logger.info(
+        `[TRACKING] removeProductTracking - userId: ${userId}, productId: ${productId}, brand: ${brand}`
+      );
 
-      const findQuery = `
-        SELECT utp.id, p.brand, p.product_id 
-        FROM user_tracked_products_unified utp
-        JOIN products_unified p ON utp.product_id = p.id
-        WHERE utp.user_id = ? AND p.product_id = ?
-      `;
+      let findQuery, params;
 
-      logger.info(`[TRACKING] Finding tracking record - userId: ${userId}, productId: ${productId}`);
+      if (brand) {
+        // Brand specified - direct lookup (faster)
+        findQuery =
+          "SELECT id, brand, product_id FROM user_tracked_products WHERE user_id = ? AND product_id = ? AND brand = ?";
+        params = [userId, productId, brand];
+      } else {
+        // No brand - search across all brand tables using UNION
+        // Frontend may send: user_tracked_products.id, product_id, or brand_table.id
+        const unionQueries = [];
 
-      db.get(findQuery, [userId, productId], (err, record) => {
+        this.supportedBrands.forEach((brandName) => {
+          const tableName = this.brandTableMap[brandName];
+          unionQueries.push(`
+            SELECT utp.id, utp.brand, utp.product_id
+            FROM user_tracked_products utp
+            LEFT JOIN ${tableName} p ON utp.product_id = p.product_id AND utp.brand = '${brandName}'
+            WHERE utp.user_id = ? AND (utp.id = ? OR utp.product_id = ? OR p.id = ?)
+          `);
+        });
+
+        findQuery = unionQueries.join(" UNION ") + " LIMIT 1";
+        params = [userId, productId, productId, productId, userId, productId, productId, productId, userId, productId, productId, productId];
+      }
+
+      db.get(findQuery, params, (err, record) => {
         if (err) {
           logger.error("Error finding tracking record:", err);
           return reject(err);
         }
 
         if (!record) {
-          logger.info(`[TRACKING] No tracking record found - userId: ${userId}, productId: ${productId}`);
-
-          db.all(
-            "SELECT utp.id, p.product_id, p.brand, p.name FROM user_tracked_products_unified utp JOIN products_unified p ON utp.product_id = p.id WHERE utp.user_id = ?",
-            [userId],
-            (err, allRecords) => {
-              if (!err) {
-                logger.debug(`[TRACKING] All tracking records for user ${userId}:`, allRecords);
-              }
-            }
-          );
-
+          logger.info(`[TRACKING] No tracking record found for productId: ${productId}`);
           return resolve({
             success: false,
             message: "Product was not being tracked",
@@ -1528,11 +1542,10 @@ class TrackingService {
         logger.info("[TRACKING] Found tracking record:", {
           id: record.id,
           brand: record.brand,
-          productId: record.product_id
+          productId: record.product_id,
         });
 
-        const deleteQuery =
-          "DELETE FROM user_tracked_products_unified WHERE id = ?";
+        const deleteQuery = "DELETE FROM user_tracked_products WHERE id = ?";
 
         db.run(deleteQuery, [record.id], function (err) {
           if (err) {
@@ -1540,9 +1553,13 @@ class TrackingService {
             return reject(err);
           }
 
+          // Invalidate cache
+          cacheManager.invalidateUserTracking(userId);
+
           logger.info(
-            ` [TRACKING] Successfully removed tracking - deleted ${this.changes} record(s) for ${record.brand}/${record.product_id}`
+            `✅ Successfully removed tracking - deleted ${this.changes} record(s) for ${record.brand}/${record.product_id}`
           );
+
           resolve({
             success: true,
             message: "Product removed from tracking",
@@ -1563,6 +1580,177 @@ class TrackingService {
    */
   async untrackProduct(userId, productId) {
     return this.removeProductTracking(userId, productId);
+  }
+
+  /**
+   * Background async Stradivarius detail updater (non-blocking)
+   * @param {string} productId - Product ID
+   * @param {string} colorId - Color ID (optional)
+   * @returns {Promise<void>}
+   */
+  async updateStradivariusDetailAsync(productId, colorId = null) {
+    try {
+      logger.info(`🔄 [BG] Checking Stradivarius detail for ${productId} (color: ${colorId || 'none'})`);
+
+      // Check if detail already exists in DB
+      const detailProduct = await new Promise((resolve, reject) => {
+        db.get(
+          "SELECT * FROM stradivarius_unique_product_details WHERE product_id = ?",
+          [productId],
+          (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+          }
+        );
+      });
+
+      if (detailProduct) {
+        // Update from existing detail
+        logger.info(`📦 [BG] Found cached detail for ${productId}`);
+
+        const updateQuery = "UPDATE stradivarius_unique_product_details SET price = ?, image_url = ?, name = ?, last_updated = ? WHERE product_id = ?";
+        const params = [
+          detailProduct.price,
+          detailProduct.image_url,
+          detailProduct.name,
+          new Date().toISOString(),
+          productId,
+        ];
+
+        await new Promise((resolve, reject) => {
+          db.run(updateQuery, params, (err) => {
+            if (err) reject(err);
+            else resolve();
+          });
+        });
+
+        logger.info(`✅ [BG] Updated ${productId} from cached detail`);
+        return;
+      }
+
+      // No cached detail - fetch from API
+      logger.info(`🌐 [BG] Fetching Stradivarius detail from API for ${productId}`);
+
+      const product = await new Promise((resolve, reject) => {
+        db.get(
+          "SELECT * FROM stradivarius_unique_product_details WHERE product_id = ?",
+          [productId],
+          (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+          }
+        );
+      });
+
+      if (!product || !product.image_url || !product.image_url.startsWith("https://") || !product.price) {
+        const stradivariusService = require("../services/stradivarius.service");
+        const service = new stradivariusService();
+
+        const detailResult = await service.getProductDetail(productId);
+        let imageUrl = null;
+        let productPrice = null;
+
+        if (detailResult.success) {
+          imageUrl = await service._getProductImageFromDetail(productId, colorId);
+
+          if (detailResult.fullResponse.bundleProductSummaries?.length > 0) {
+            const bundle = detailResult.fullResponse.bundleProductSummaries[0];
+            const firstColor = bundle.detail?.colors?.[0];
+            const firstSize = firstColor?.sizes?.[0];
+
+            if (firstSize?.price) {
+              productPrice = parseInt(firstSize.price);
+              logger.info(`💰 [BG] Found price: ${(productPrice / 100).toFixed(2)} TL`);
+            }
+          }
+        }
+
+        // Build update query
+        let updateQuery = "UPDATE stradivarius_unique_product_details SET last_updated = ?";
+        let params = [new Date().toISOString()];
+
+        if (imageUrl) {
+          updateQuery = "UPDATE stradivarius_unique_product_details SET image_url = ?, last_updated = ?";
+          params = [imageUrl, new Date().toISOString()];
+          logger.info(`🖼️ [BG] Updated image for ${productId}`);
+        }
+
+        if (productPrice) {
+          updateQuery = updateQuery.replace("last_updated = ?", "price = ?, last_updated = ?");
+          params.splice(-1, 0, productPrice);
+        }
+
+        updateQuery += " WHERE product_id = ?";
+        params.push(productId);
+
+        await new Promise((resolve, reject) => {
+          db.run(updateQuery, params, (err) => {
+            if (err) reject(err);
+            else resolve();
+          });
+        });
+
+        logger.info(`✅ [BG] Updated ${productId} from API`);
+      }
+    } catch (error) {
+      logger.error(`❌ [BG] Failed to update Stradivarius ${productId}:`, error.message);
+    }
+  }
+
+  /**
+   * Fetch product from brand API if not in database
+   * Only supports Bershka and Stradivarius (Zara requires pre-scraping)
+   * @param {string} brand - Brand name (bershka, stradivarius, zara)
+   * @param {string} productId - Product ID
+   * @param {string} colorId - Color ID (optional)
+   * @returns {Promise<Object|null>} Formatted product or null
+   */
+  async fetchProductFromAPI(brand, productId, colorId = null) {
+    const startTime = Date.now();
+    logger.info(`🌐 [API] Attempting to fetch ${brand} product ${productId} from API`);
+
+    try {
+      let result = null;
+
+      switch (brand.toLowerCase()) {
+        case "bershka": {
+          const BershkaService = require("./bershka.service");
+          const service = new BershkaService();
+          result = await service.fetchSingleProduct(productId, colorId);
+          break;
+        }
+
+        case "stradivarius": {
+          const StradivariusService = require("./stradivarius.service");
+          const service = new StradivariusService();
+          result = await service.fetchSingleProduct(productId, colorId);
+          break;
+        }
+
+        case "zara":
+          logger.warn(`⚠️ [API] Zara products cannot be fetched individually - pre-scraping required`);
+          return null;
+
+        default:
+          logger.error(`❌ [API] Unsupported brand: ${brand}`);
+          return null;
+      }
+
+      const elapsed = Date.now() - startTime;
+
+      if (result) {
+        logger.info(`✅ [API] Successfully fetched ${brand} product ${productId} in ${elapsed}ms`);
+      } else {
+        logger.error(`❌ [API] Failed to fetch ${brand} product ${productId} - product may not exist`);
+      }
+
+      return result;
+
+    } catch (error) {
+      const elapsed = Date.now() - startTime;
+      logger.error(`❌ [API] Error fetching ${brand} product ${productId} (${elapsed}ms):`, error.message);
+      throw error;
+    }
   }
 }
 

@@ -1,17 +1,15 @@
 :root {
   /* Shadow Variables */
-  --shadow-normal: #3d3d3d 0.2rem 0.2rem 0 0;
+  --shadow-normal: #545454 0.2rem 0.2rem 0 0;
   --shadow-hover: #422800 1px 1px 0 0;
   --shadow-dark: #011222 0.2rem 0.2rem 0 0;
   --shadow-light: #666666 0.2rem 0.2rem 1rem 0.1rem;
   --shadow-blue: #c9e1ff 0.2rem 0.2rem 3rem 0.1rem;
 }
 
-
 .element::-webkit-scrollbar {
   display: none;
 }
-
 
 body::-webkit-scrollbar {
   display: none;
@@ -21,22 +19,21 @@ html::-webkit-scrollbar {
   display: none;
 }
 
-
 *::-webkit-scrollbar {
   display: none;
 }
 
 /* Firefox scrollbar*/
 .element {
-  scrollbar-width: none; 
+  scrollbar-width: none;
 }
 
 body {
-  scrollbar-width: none; 
+  scrollbar-width: none;
 }
 
 html {
-  scrollbar-width: none; 
+  scrollbar-width: none;
 }
 
 html {
@@ -138,11 +135,11 @@ h2 {
   position: absolute;
   top: 4px;
   left: 4px;
-  width: calc(50% - 6px);
-  height: calc(100% - 12px);
+  width: calc(50% - 5px);
+  height: calc(100% - 10px);
   border-radius: 2.5rem;
   background: #f88379;
-  box-shadow: var(--shadow-normal);
+  box-shadow: #545454 0.1rem 0.1rem 0 0;
   border: 1px solid #011f26;
   transition: transform 0.3s ease-in-out;
   will-change: transform;
@@ -352,7 +349,7 @@ h2 {
 }
 
 .linkBox {
-  width: 91rem;
+  width: 87rem;
   min-height: 20em;
   border: solid 2px black;
   border-radius: 3rem;
@@ -413,21 +410,24 @@ h2 {
 
 .addedItemBoxes {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 1rem;
-  padding: 0 1rem 1rem;
+  padding: 0 1rem 0rem;
 }
 
 .itemBrandImg {
-  height: 5rem;
+  height: 2.5rem;
 }
 
 .addedItemButtonsAndInfoBox {
   height: inherit;
+  width: -webkit-fill-available;
   margin-left: 1rem;
+  margin-right: 1rem;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  /* justify-content: center; */
+  align-items: flex-start;
 }
 
 .itemInfoBox {
@@ -437,21 +437,23 @@ h2 {
 }
 
 .addedItemBox {
+  border: aliceblue;
   position: relative;
   display: flex;
   align-items: center;
   overflow: hidden;
   margin: 0;
   border-radius: 2rem;
-  width: inherit;
-  height: 14rem;
+  width: 16.2rem;
+  height: 25rem;
   margin-top: 0;
-  background: #e0eeff;
-  /* border: solid 2px black; */
+  background: aliceblue;
+  /* border: solid 2px linen; */
   /* box-shadow: var(--shadow-normal); */
   cursor: pointer;
   transition: background-color 0.3s ease-in-out;
   transition: box-shadow 0.1s ease-in-out;
+  flex-direction: column;
 }
 
 .addedItemBox:hover {
@@ -459,36 +461,63 @@ h2 {
   box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
 }
 
+.addedItemBox:hover .itemImgWrapper{
+  opacity: 0.6;
+}
+
 .addedItemInfoBox {
   display: flex;
+  padding-top: 0.3rem;
 }
 
 .itemImgWrapper {
+  border-bottom-left-radius: 2rem;
+  border-bottom-right-radius: 2rem;
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 149px;
-  height: inherit;
+  width: inherit;
+  height: 17.2rem;
   overflow: clip;
 }
 
 .itemImg {
   height: inherit;
+  transition: filter 0.3s ease, opacity 0.3s ease;
+  will-change: filter, opacity;
+  transform: translateZ(0); 
+}
+
+.itemImg.loading {
+  filter: blur(8px);
+  opacity: 0.5;
+}
+
+.itemImg.loaded {
+  filter: blur(0);
+  opacity: 1;
+  width: 17rem;
+  height: fit-content;
 }
 
 .itemTitle {
-  font-family: "Quicksand", sans-serif;
+  margin: 0;
+  /* position: relative; */
+  /* top: 9%; */
+  /* text-align: left; */
+  font-family: "Quicksand";
   will-change: box-shadow, transform;
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0.4rem 0 0.2rem 0.6rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  /* margin: 0.4rem 0 0.2rem 0.6rem; */
   line-height: 1.2;
   display: -webkit-box;
   line-clamp: 2;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  padding-right: 1rem;
+  /* padding-right: 1rem; */
+  text-transform: uppercase;
 }
 
 .itemDiscountStatus {
@@ -501,12 +530,25 @@ h2 {
 }
 
 .itemInfo {
-  font-family: "Quicksand", sans-serif;
+  /* box-shadow: 0 0 40px rgba(0, 0, 0, 0.6); */
+  /* display: none; */
+  border-radius: 1rem;
+  /* display: inline-grid
+; */
+  height: 2rem;
+  /* width: 15.2rem; */
+  /* background: white; */
+  position: absolute;
+  left: 58%;
+  bottom: 2%;
+  font-family: monospace;
   will-change: box-shadow, transform;
   font-size: 0.9rem;
-  font-weight: 400;
-  margin: 0 0 0.2rem 0.6rem;
-  color: #555;
+  font-weight: 500;
+  margin: 0 0 0.2rem 0rem;
+  color: black;
+  justify-content: center;
+  align-content: center;
 }
 
 .addedItemImgBoxButtons {
@@ -545,13 +587,14 @@ h2 {
 }
 
 #goToTheProduct {
+  display: none;
   position: absolute;
   width: 5.5rem;
   background-color: #8ec0fc;
   font-weight: 600;
   font-size: 0.9rem;
   margin-bottom: 0.6rem;
-  left: 78%;
+  left: 64%;
   bottom: 1%;
 }
 
@@ -566,11 +609,12 @@ h2 {
   height: 2rem;
   border-radius: 2rem;
   top: 3%;
-  right: 3%;
+  right: 5%;
   cursor: pointer;
-  transition: all 150ms ease-in-out;
+  transition: all 100ms ease-in-out;
   opacity: 0;
   pointer-events: none;
+  border: solid 2px #3d3d3d;
 }
 
 #removeItem:hover {
@@ -578,7 +622,6 @@ h2 {
   transform: translate(2px, 2px);
 }
 
-/* addedItemBox hover edildiğinde removeItem görünür olsun */
 .addedItemBox:hover #removeItem {
   opacity: 1;
   pointer-events: auto;
@@ -591,7 +634,7 @@ h2 {
 .footer {
   position: relative;
   width: -webkit-fill-available;
-  margin-top: 9vh;
+  margin-top: 6vh;
   padding: 2vh 0;
   font-size: 0.9rem;
   color: #333;
@@ -673,7 +716,7 @@ h2 {
     gap: 2rem;
   }
   .linkBox {
-    width: 91rem;
+    width: 87rem;
     min-height: 21rem;
   }
   .linkInput {

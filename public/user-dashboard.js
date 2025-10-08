@@ -55,6 +55,29 @@ const debouncedBrandSave = debounce(
 let currentProducts = [];
 let isLoadingProducts = false;
 
+
+function attachImageLoadListeners() {
+  document.querySelectorAll('.itemImg').forEach(img => {
+
+    if (img.complete && img.naturalHeight !== 0) {
+      img.classList.remove('loading');
+      img.classList.add('loaded');
+    } else {
+      
+      img.addEventListener('load', function handleLoad() {
+        this.classList.remove('loading');
+        this.classList.add('loaded');
+        this.removeEventListener('load', handleLoad);
+      });
+
+      img.addEventListener('error', function handleError() {
+        this.classList.remove('loading');
+        this.removeEventListener('error', handleError);
+      });
+    }
+  });
+}
+
 function animateLinkBoxHeight() {
   const linkBox = document.querySelector(".linkBox");
   const hasProducts =
@@ -97,9 +120,12 @@ function addProductWithAnimation(container, newProduct) {
   if (img) {
     img.onload = () => {
       console.log("🖼️ Dynamic image loaded:", img.src);
+      img.classList.remove('loading');
+      img.classList.add('loaded');
     };
     img.onerror = () => {
       console.error("❌ Dynamic image failed to load:", img.src);
+      img.classList.remove('loading');
 
       img.src =
         newProduct.brandLogoSrc ||
@@ -366,6 +392,7 @@ async function loadUserTrackedProducts() {
       );
       console.log("📦 Ürün detayları:", currentProducts);
       renderProductCards(addedItemsContainer, currentProducts);
+      attachImageLoadListeners(); // Enable blur-to-sharp loading
     } else {
       console.log("📝 Henüz takip edilen ürün bulunmuyor");
       console.log("🔍 Response detayları:", response);
@@ -504,17 +531,37 @@ async function handleAddProduct() {
 
       console.log("🖼️ Yeni ürün UI objesi:", newProductForUI);
       console.log("🖼️ Ürün imageUrl:", response.product.imageUrl);
+      console.log("🔄 Backend'den güncel ürün listesi çekiliyor...");
 
-      currentProducts.push(newProductForUI);
+      const trackedResponse = await fetchTrackedProducts();
 
-      const hasExistingProducts =
-        addedItemsContainer.children.length > 0 &&
-        !addedItemsContainer.querySelector('div[style*="text-align: center"]');
+      if (trackedResponse.success && trackedResponse.products) {
+        currentProducts = trackedResponse.products;
+        console.log(`✅ ${currentProducts.length} ürün backend'den alındı`);
 
-      if (!hasExistingProducts) {
-        renderProductCards(addedItemsContainer, currentProducts);
+        const hasExistingProducts =
+          addedItemsContainer.children.length > 0 &&
+          !addedItemsContainer.querySelector('div[style*="text-align: center"]');
+
+        if (!hasExistingProducts) {
+          renderProductCards(addedItemsContainer, currentProducts);
+          attachImageLoadListeners(); 
+        } else {
+          renderProductCards(addedItemsContainer, currentProducts);
+          attachImageLoadListeners();
+        }
       } else {
-        addProductWithAnimation(addedItemsContainer, newProductForUI);
+        currentProducts.push(newProductForUI);
+        const hasExistingProducts =
+          addedItemsContainer.children.length > 0 &&
+          !addedItemsContainer.querySelector('div[style*="text-align: center"]');
+
+        if (!hasExistingProducts) {
+          renderProductCards(addedItemsContainer, currentProducts);
+          attachImageLoadListeners();
+        } else {
+          addProductWithAnimation(addedItemsContainer, newProductForUI);
+        }
       }
     } else {
       console.error("❌ Ürün eklenemedi:", response.message);

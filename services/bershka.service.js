@@ -712,9 +712,9 @@ class BershkaService {
 
     try {
       const productIdsParam = productIds.join("%2C");
-      const categoryId = this.fallbackCategoryId;
+      const url = `${this.baseUrl}/productsArray?productIds=${productIdsParam}&appId=1&languageId=-43&locale=tr_TR`;
 
-      const url = `${this.baseUrl}/productsArray?categoryId=${categoryId}&productIds=${productIdsParam}&appId=1&languageId=-43&locale=tr_TR`;
+      logger.info(`🌐 [BERSHKA API] Fetching: ${url}`);
 
       const response = await axios.get(url, {
         headers: this.headers,
@@ -722,12 +722,14 @@ class BershkaService {
       });
 
       if (response.data && response.data.products) {
+        logger.info(`✅ [BERSHKA API] Found ${response.data.products.length} product(s)`);
         return response.data.products;
       }
 
+      logger.warn(`⚠️ [BERSHKA API] No products found in response`);
       return [];
     } catch (error) {
-      logger.error(`API fetch hatası: ${error.message}`);
+      logger.error(`❌ [BERSHKA API] Fetch error: ${error.message}`);
       return [];
     }
   }
@@ -959,6 +961,47 @@ class BershkaService {
         error: error.message,
         timestamp: new Date().toISOString(),
       };
+    }
+  }
+
+  /**
+   * Fetch single product from API and save to DB
+   * @param {string} productId - Product ID
+   * @param {string} colorId - Color ID (optional)
+   * @returns {Promise<Object|null>} Formatted product or null
+   */
+  async fetchSingleProduct(productId, colorId = null) {
+    logger.info(`🔍 [API] Fetching single Bershka product: ${productId}`);
+
+    const startTime = Date.now();
+
+    try {
+      const products = await this.fetchProductDetails([productId]);
+
+      if (!products || products.length === 0) {
+        logger.error(`❌ [API] Bershka product ${productId} not found`);
+        return null;
+      }
+
+      logger.info(`✅ [API] Product fetched in ${Date.now() - startTime}ms`);
+
+      const processedProducts = await this._processProductsWithUniqueColors(products);
+
+      if (!processedProducts || processedProducts.length === 0) {
+        logger.error(`❌ [API] Failed to process product ${productId}`);
+        return null;
+      }
+
+      const savedCount = await this.saveUniqueProductDetails(processedProducts);
+      logger.info(`💾 Saved ${savedCount} color variant(s) to DB`);
+
+      logger.info(`⏱️ Total fetchSingleProduct time: ${Date.now() - startTime}ms`);
+
+      return processedProducts[0];
+
+    } catch (error) {
+      logger.error(`❌ [API] Error fetching product ${productId}:`, error.message);
+      return null;
     }
   }
 }

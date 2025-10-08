@@ -52,7 +52,7 @@ export function createProductCardHTML(product) {
     product.id
   }">
         <div class="itemImgWrapper">
-          <img class="itemImg" src="${imgSrc}" alt="${product.title}" />
+          <img class="itemImg loading" src="${imgSrc}" alt="${product.title}" />
         </div>
         <div class="addedItemButtonsAndInfoBox">
           <div class="addedItemInfoBox">

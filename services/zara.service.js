@@ -445,8 +445,18 @@ class ZaraService {
 
   getImageUrl(color) {
     try {
-      if (color.xmedia && color.xmedia.length > 0 && color.xmedia[0].url) {
-        return color.xmedia[0].url.replace("{width}", "750");
+      // Önce xmedia dizisinde JPG ara (m3u8 videolarını atla)
+      if (color.xmedia && color.xmedia.length > 0) {
+        for (const media of color.xmedia) {
+          if (media.url && !media.url.includes('.m3u8')) {
+            return media.url.replace("{width}", "750");
+          }
+        }
+        // JPG bulunamadı ama m3u8 var, onu JPG'ye çevir
+        const firstMedia = color.xmedia[0];
+        if (firstMedia.url && firstMedia.url.includes('.m3u8')) {
+          return this.convertM3u8ToJpg(firstMedia.url);
+        }
       }
       if (color.pdpMedia && color.pdpMedia.url) {
         return color.pdpMedia.url.replace("{width}", "750");
@@ -456,6 +466,19 @@ class ZaraService {
       logger.warn("Image URL alınamadı:", error.message);
       return "";
     }
+  }
+
+  convertM3u8ToJpg(url) {
+    if (!url || !url.includes('.m3u8')) {
+      return url;
+    }
+    // Pattern: .../04470341405-e10/master.m3u8 -> .../04470341405-e1/04470341405-e1.jpg
+    const match = url.match(/\/([^\/]+)-e\d+\/master\.m3u8/);
+    if (match) {
+      const baseReference = match[1];
+      return url.replace(/-e\d+\/master\.m3u8.*$/, `-e1/${baseReference}-e1.jpg`);
+    }
+    return url;
   }
 
   async saveProductsToDatabase(products) {

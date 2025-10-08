@@ -212,36 +212,42 @@ app.use("/admin", adminRoutes);
 logger.info("Admin routes loaded: /admin");
 
 app.get("/api/image-proxy", async (req, res) => {
+  const startTime = Date.now();
   try {
     const { url } = req.query;
 
+    // Check cache first
     const cachedImage = cache.getCachedImage(url);
     if (cachedImage) {
+      const duration = Date.now() - startTime;
       res.set("Content-Type", cachedImage.contentType);
       res.set("Cache-Control", "public, max-age=86400");
       res.set("X-Cache", "HIT");
+      res.set("X-Response-Time", `${duration}ms`);
+      logger.info(`⚡ Image proxy [CACHE HIT] - ${duration}ms`);
       return res.send(cachedImage.buffer);
     }
 
     const result = await imageProxyService.proxyImage(url);
 
-    const chunks = [];
-    result.data.on('data', (chunk) => chunks.push(chunk));
-    result.data.on('end', () => {
-      const buffer = Buffer.concat(chunks);
-      cache.setCachedImage(url, {
-        buffer,
-        contentType: result.contentType
-      });
+    const buffer = Buffer.from(result.data);
+
+    cache.setCachedImage(url, {
+      buffer,
+      contentType: result.contentType
     });
 
+    const duration = Date.now() - startTime;
     res.set("Content-Type", result.contentType);
     res.set("Cache-Control", result.cacheControl);
     res.set("X-Cache", "MISS");
+    res.set("X-Response-Time", `${duration}ms`);
+    logger.info(`📥 Image proxy [CACHE MISS] - ${duration}ms (${(buffer.length / 1024).toFixed(2)} KB)`);
 
-    result.data.pipe(res);
+    res.send(buffer);
   } catch (error) {
-    logger.error("Image proxy hatası:", error.message);
+    const duration = Date.now() - startTime;
+    logger.error(`❌ Image proxy error - ${duration}ms:`, error.message);
     res.status(404).send("Resim bulunamadı");
   }
 });

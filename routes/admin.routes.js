@@ -500,7 +500,7 @@ router.get("/api/users", isAdmin, (req, res) => {
 
     const trackingSql = `
       SELECT user_id, COUNT(*) as trackCount
-      FROM user_tracked_products_unified
+      FROM user_tracked_products
       GROUP BY user_id
     `;
 

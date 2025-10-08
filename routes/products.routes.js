@@ -76,7 +76,6 @@ router.get("/", async (req, res) => {
       lastUpdated: product.last_updated,
     }));
 
-    // Cache'e kaydet
     cache.setCachedProducts(filters, formattedProducts);
 
     res.json({
@@ -106,10 +105,10 @@ router.get("/tracked", authenticate, async (req, res) => {
 
     const trackedZaraProducts = await new Promise((resolve, reject) => {
       const sqlQuery = `
-                SELECT 
+                SELECT
                     utp.*,
                     zp.*
-                FROM user_tracked_products_unified utp
+                FROM user_tracked_products utp
                 JOIN zara_products zp ON utp.product_id = zp.product_id
                 WHERE utp.user_id = ? AND utp.brand = 'zara'
                 GROUP BY utp.product_id, utp.user_id, utp.brand

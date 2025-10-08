@@ -29,11 +29,20 @@ class CacheManager {
       maxKeys: 100
     });
 
+    // User tracking cache - 5 dakika TTL
+    this.userTrackingCache = new NodeCache({
+      stdTTL: 300, // 5 dakika
+      checkperiod: 60, // 1 dakikada bir temizlik
+      useClones: false,
+      maxKeys: 10000 // 10K kullanıcı cache'lenebilir
+    });
+
     // Manual stats tracking
     this.stats = {
       products: { hits: 0, misses: 0 },
       images: { hits: 0, misses: 0 },
-      stats: { hits: 0, misses: 0 }
+      stats: { hits: 0, misses: 0 },
+      userTracking: { hits: 0, misses: 0 }
     };
 
     // Event listeners for monitoring
@@ -142,7 +151,49 @@ class CacheManager {
     this.invalidateProductCache();
     this.invalidateImageCache();
     this.invalidateStatsCache();
+    this.invalidateAllUserTracking();
     logger.info('All caches invalidated');
+  }
+
+  // User tracking cache methods
+  getCachedUserTracking(userId) {
+    const key = `user_tracking:${userId}`;
+    const cached = this.userTrackingCache.get(key);
+
+    if (cached) {
+      this.stats.userTracking.hits++;
+      logger.debug('User tracking cache HIT', { userId });
+    } else {
+      this.stats.userTracking.misses++;
+      logger.debug('User tracking cache MISS', { userId });
+    }
+
+    return cached;
+  }
+
+  setCachedUserTracking(userId, data) {
+    const key = `user_tracking:${userId}`;
+    this.userTrackingCache.set(key, data);
+    logger.debug('User tracking cached', {
+      userId,
+      productCount: data?.products?.length
+    });
+  }
+
+  invalidateUserTracking(userId) {
+    const key = `user_tracking:${userId}`;
+    const deleted = this.userTrackingCache.del(key);
+    if (deleted > 0) {
+      logger.info('User tracking cache invalidated', { userId });
+    }
+    return deleted;
+  }
+
+  invalidateAllUserTracking() {
+    const keys = this.userTrackingCache.keys();
+    this.userTrackingCache.flushAll();
+    this.stats.userTracking = { hits: 0, misses: 0 };
+    logger.info('All user tracking cache invalidated', { keysCleared: keys.length });
   }
 
   // Cache key generator
@@ -161,7 +212,8 @@ class CacheManager {
     return {
       products: this.stats.products,
       images: this.stats.images,
-      stats: this.stats.stats
+      stats: this.stats.stats,
+      userTracking: this.stats.userTracking
     };
   }
 
@@ -176,9 +228,12 @@ class CacheManager {
       products: calculateRate(this.stats.products),
       images: calculateRate(this.stats.images),
       stats: calculateRate(this.stats.stats),
+      userTracking: calculateRate(this.stats.userTracking),
       overall: calculateRate({
-        hits: this.stats.products.hits + this.stats.images.hits + this.stats.stats.hits,
-        misses: this.stats.products.misses + this.stats.images.misses + this.stats.stats.misses
+        hits: this.stats.products.hits + this.stats.images.hits +
+              this.stats.stats.hits + this.stats.userTracking.hits,
+        misses: this.stats.products.misses + this.stats.images.misses +
+                this.stats.stats.misses + this.stats.userTracking.misses
       })
     };
   }
