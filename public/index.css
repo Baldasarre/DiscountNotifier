@@ -1,6 +1,6 @@
 :root {
   /* Shadow Variables */
-  --shadow-normal: #413f3f 0.2rem 0.2rem 0 0;
+  --shadow-normal: #797979 0.2rem 0.2rem 0 0;
   --shadow-hover: #422800 1px 1px 0 0;
   --shadow-dark: #4b4949 0.2rem 0.2rem 0 0;
   --shadow-light: #dadada 0.2rem 0.2rem 1rem 0.1rem;
@@ -99,7 +99,7 @@ h1 {
   width: 36rem;
   height: 4rem;
   background: #f88379;
-  border: 2px solid #011f26;
+  border: 1px solid #011f26;
   border-radius: 1.5rem;
   box-shadow: var(--shadow-dark);
   border-top: transparent;
