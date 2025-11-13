@@ -13,21 +13,21 @@ class MonitoringService {
     this.responseTimeHistory = [];
     this.maxHistorySize = 250;
 
-    this.activeUsers = new Map(); // userId -> lastActivityTime
-    this.userActivityWindow = 15 * 60 * 1000; // 15 minutes
+    this.activeUsers = new Map();
+    this.userActivityWindow = 5 * 60 * 1000;
 
     this.requestBuckets = [];
-    this.bucketDuration = 60 * 1000; // 1 minute
-    this.maxBuckets = 360; // 360 * 1min = 6 hours
+    this.bucketDuration = 60 * 1000;
+    this.maxBuckets = 360; 
     this.currentBucket = {
       timestamp: Date.now(),
       count: 0,
     };
 
-    // Memory peak tracking (last 6 hours)
+
     this.memoryPeak = 0;
     this.memoryPeakResetTime = Date.now();
-    this.peakResetInterval = 6 * 60 * 60 * 1000; // 6 hours
+    this.peakResetInterval = 6 * 60 * 60 * 1000; 
   }
 
   /**
@@ -88,13 +88,12 @@ class MonitoringService {
       const queries = {
         users: "SELECT COUNT(*) as count FROM users",
         verifiedUsers: "SELECT COUNT(*) as count FROM users WHERE verified = 1",
-        zaraProducts:
-          "SELECT COUNT(*) as count FROM zara_products WHERE 1=1",
+        zaraProducts: "SELECT COUNT(*) as count FROM zara_products WHERE 1=1",
         bershkaProducts: "SELECT COUNT(*) as count FROM bershka_unique_product_details",
-        stradivariusProducts:
-          "SELECT COUNT(*) as count FROM stradivarius_unique_product_details",
-        onSaleProducts:
-          "SELECT COUNT(*) as count FROM zara_products WHERE is_on_sale = 1",
+        stradivariusProducts: "SELECT COUNT(DISTINCT reference) as count FROM stradivarius_unique_product_details",
+        pullandbearProducts: "SELECT COUNT(*) as count FROM pullandbear_unique_product_details",
+        massimoduttiProducts: "SELECT COUNT(*) as count FROM massimodutti_unique_product_details",
+        hmProducts: "SELECT COUNT(*) as count FROM hm_products"
       };
 
       const results = {};
@@ -132,8 +131,14 @@ class MonitoringService {
       stats: stats.stats,
       hitRate: hitRates.overall,
       hitRates: hitRates,
-      hits: (stats.products.hits || 0) + (stats.images.hits || 0) + (stats.stats.hits || 0),
-      misses: (stats.products.misses || 0) + (stats.images.misses || 0) + (stats.stats.misses || 0),
+      hits:
+        (stats.products.hits || 0) +
+        (stats.images.hits || 0) +
+        (stats.stats.hits || 0),
+      misses:
+        (stats.products.misses || 0) +
+        (stats.images.misses || 0) +
+        (stats.stats.misses || 0),
     };
   }
 

@@ -5,7 +5,7 @@ const logger = createServiceLogger("product");
 
 class ProductService {
   constructor() {
-    this.supportedBrands = ["zara", "bershka", "stradivarius"];
+    this.supportedBrands = ["zara", "bershka", "stradivarius", "massimodutti", "pullandbear", "oysho"];
     this.defaultLimit = 20;
     this.maxLimit = 100;
   }
@@ -60,6 +60,12 @@ class ProductService {
           tableName = "bershka_unique_product_details";
         } else if (brandLower === "stradivarius") {
           tableName = "stradivarius_unique_product_details";
+        } else if (brandLower === "massimodutti") {
+          tableName = "massimodutti_unique_product_details";
+        } else if (brandLower === "pullandbear") {
+          tableName = "pullandbear_unique_product_details";
+        } else if (brandLower === "oysho") {
+          tableName = "oysho_unique_product_details";
         } else {
           return reject(new Error(`Unsupported brand: ${brand}`));
         }
@@ -154,6 +160,18 @@ class ProductService {
         query =
           "SELECT * FROM bershka_unique_product_details WHERE product_id = ?";
         params = [productId];
+      } else if (brand.toLowerCase() === "massimodutti") {
+        query =
+          "SELECT * FROM massimodutti_unique_product_details WHERE product_id = ?";
+        params = [productId];
+      } else if (brand.toLowerCase() === "pullandbear") {
+        query =
+          "SELECT * FROM pullandbear_unique_product_details WHERE product_id = ?";
+        params = [productId];
+      } else if (brand.toLowerCase() === "oysho") {
+        query =
+          "SELECT * FROM oysho_unique_product_details WHERE product_id = ?";
+        params = [productId];
       } else {
         query =
           "SELECT * FROM products_unified WHERE brand = ? AND product_id = ?";
@@ -202,6 +220,21 @@ class ProductService {
         } else if (brandLower === "bershka") {
           query =
             "SELECT * FROM bershka_unique_product_details WHERE product_id = ?";
+          params = [id];
+        } else if (brandLower === "massimodutti") {
+          query =
+            "SELECT * FROM massimodutti_unique_product_details WHERE product_id = ?";
+          params = [id];
+        } else if (brandLower === "pullandbear") {
+          query =
+            "SELECT * FROM pullandbear_unique_product_details WHERE product_id = ?";
+          params = [id];
+        } else if (brandLower === "oysho") {
+          query =
+            "SELECT * FROM oysho_unique_product_details WHERE product_id = ?";
+          params = [id];
+        } else if (brandLower === "hm") {
+          query = "SELECT * FROM hm_products WHERE product_id = ?";
           params = [id];
         } else {
           return reject(new Error(`Unsupported brand: ${brand}`));
@@ -327,6 +360,15 @@ class ProductService {
           saleColumn = "sale_price";
         } else if (brandLower === "stradivarius") {
           tableName = "stradivarius_unique_product_details";
+          saleColumn = "old_price";
+        } else if (brandLower === "massimodutti") {
+          tableName = "massimodutti_unique_product_details";
+          saleColumn = "old_price";
+        } else if (brandLower === "pullandbear") {
+          tableName = "pullandbear_unique_product_details";
+          saleColumn = "old_price";
+        } else if (brandLower === "oysho") {
+          tableName = "oysho_unique_product_details";
           saleColumn = "old_price";
         } else {
           return reject(new Error(`Unsupported brand: ${brand}`));
@@ -486,7 +528,10 @@ class ProductService {
       price: product.price,
       sale_price: product.sale_price,
       currency: product.currency || "TL",
-      formattedPrice: product.price
+      // H&M already has formatted_price from API, use it directly
+      formattedPrice: product.brand === "hm" && product.formatted_price
+        ? product.formatted_price
+        : product.price
         ? (product.price / 100).toLocaleString("tr-TR", {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
@@ -529,7 +574,11 @@ class ProductService {
       !formatted.image_url.includes("/api/image-proxy") &&
       (formatted.image_url.includes("zara.net") ||
         formatted.image_url.includes("bershka.net") ||
-        formatted.image_url.includes("static.e-stradivarius.net"))
+        formatted.image_url.includes("static.e-stradivarius.net") ||
+        formatted.image_url.includes("massimodutti.net") ||
+        formatted.image_url.includes("pullandbear.net") ||
+        formatted.image_url.includes("oysho.net") ||
+        formatted.image_url.includes("image.hm.com"))
     ) {
       formatted.imgSrc =
         "/api/image-proxy?url=" + encodeURIComponent(formatted.image_url);
@@ -538,7 +587,13 @@ class ProductService {
         formatted.image_url || "/Images/" + product.brand + ".png";
     }
 
-    formatted.brandLogoSrc = "/Images/" + product.brand + ".png";
+    // Handle special brand logo names
+    const brandLogoMap = {
+      pullandbear: "pb",
+      massimodutti: "massimodutti"
+    };
+    const logoName = brandLogoMap[product.brand] || product.brand;
+    formatted.brandLogoSrc = "/Images/" + logoName + ".png";
 
     formatted.imageUrl = formatted.imgSrc;
 
@@ -620,6 +675,12 @@ class ProductService {
       SELECT *, 'bershka' as brand FROM bershka_unique_product_details
       UNION ALL
       SELECT *, 'stradivarius' as brand FROM stradivarius_unique_product_details
+      UNION ALL
+      SELECT *, 'massimodutti' as brand FROM massimodutti_unique_product_details
+      UNION ALL
+      SELECT *, 'pullandbear' as brand FROM pullandbear_unique_product_details
+      UNION ALL
+      SELECT *, 'oysho' as brand FROM oysho_unique_product_details
     `;
 
     const params = [];
@@ -652,9 +713,15 @@ class ProductService {
         SELECT COUNT(*) as total FROM (
           SELECT id FROM zara_products
           UNION ALL
-          SELECT id FROM bershka_unique_product_details  
+          SELECT id FROM bershka_unique_product_details
           UNION ALL
           SELECT id FROM stradivarius_unique_product_details
+          UNION ALL
+          SELECT id FROM massimodutti_unique_product_details
+          UNION ALL
+          SELECT id FROM pullandbear_unique_product_details
+          UNION ALL
+          SELECT id FROM oysho_unique_product_details
         )
       `;
       const countParams = [];
@@ -668,6 +735,12 @@ class ProductService {
             SELECT id, name, availability FROM bershka_unique_product_details
             UNION ALL
             SELECT id, name, availability FROM stradivarius_unique_product_details
+            UNION ALL
+            SELECT id, name, availability FROM massimodutti_unique_product_details
+            UNION ALL
+            SELECT id, name, availability FROM pullandbear_unique_product_details
+            UNION ALL
+            SELECT id, name, availability FROM oysho_unique_product_details
           )
           WHERE ` + conditions.join(" AND ");
         countParams.push(...params.slice(0, -2));

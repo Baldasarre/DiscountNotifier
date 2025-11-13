@@ -13,10 +13,14 @@ class ImageProxyService {
       !url ||
       (!url.startsWith("https://static.zara.net/") &&
         !url.startsWith("https://static.bershka.net/") &&
-        !url.startsWith("https://static.e-stradivarius.net/"))
+        !url.startsWith("https://static.e-stradivarius.net/") &&
+        !url.startsWith("https://static.pullandbear.net/") &&
+        !url.startsWith("https://static.massimodutti.net/") &&
+        !url.startsWith("https://static.oysho.net/") &&
+        !url.startsWith("https://image.hm.com/"))
     ) {
       throw new Error(
-        "Invalid URL - Only Zara, Bershka and Stradivarius images are supported"
+        "Invalid URL - Only Zara, Bershka, Stradivarius, Pull&Bear, Massimo Dutti, Oysho and H&M images are supported"
       );
     }
 
@@ -33,6 +37,14 @@ class ImageProxyService {
       headers.Referer = "https://www.bershka.com/";
     } else if (url.startsWith("https://static.e-stradivarius.net/")) {
       headers.Referer = "https://www.stradivarius.com/";
+    } else if (url.startsWith("https://static.pullandbear.net/")) {
+      headers.Referer = "https://www.pullandbear.com/";
+    } else if (url.startsWith("https://static.massimodutti.net/")) {
+      headers.Referer = "https://www.massimodutti.com/";
+    } else if (url.startsWith("https://static.oysho.net/")) {
+      headers.Referer = "https://www.oysho.com/";
+    } else if (url.startsWith("https://image.hm.com/")) {
+      headers.Referer = "https://www2.hm.com/";
     }
 
     const startTime = Date.now();
@@ -63,7 +75,10 @@ class ImageProxyService {
     return (
       url &&
       (url.includes("static.bershka.net") ||
-        url.includes("static.e-stradivarius.net"))
+        url.includes("static.e-stradivarius.net") ||
+        url.includes("static.pullandbear.net") ||
+        url.includes("static.massimodutti.net") ||
+        url.includes("static.oysho.net"))
     );
   }
 }

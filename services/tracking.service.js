@@ -7,14 +7,18 @@ const logger = createServiceLogger("tracking");
 
 class TrackingService {
   constructor() {
-    this.maxTrackedPerUser = 10;
-    this.supportedBrands = ["zara", "bershka", "stradivarius"];
+    this.maxTrackedPerUser = 20;
+    this.supportedBrands = ["zara", "bershka", "stradivarius", "massimodutti", "pullandbear", "oysho", "hm"];
 
     // Brand to table mapping for dynamic JOINs
     this.brandTableMap = {
       zara: "zara_products",
       bershka: "bershka_unique_product_details",
-      stradivarius: "stradivarius_unique_product_details"
+      stradivarius: "stradivarius_unique_product_details",
+      massimodutti: "massimodutti_unique_product_details",
+      pullandbear: "pullandbear_unique_product_details",
+      oysho: "oysho_unique_product_details",
+      hm: "hm_products"
     };
   }
 
@@ -363,6 +367,430 @@ class TrackingService {
 
         logger.info(`[STRADIVARIUS] Found product by reference: ${product.name}, ID: ${product.product_id} (first match from duplicates)`);
 
+        resolve({
+          success: true,
+          product: product,
+          productId: product.product_id
+        });
+      });
+    });
+  }
+
+  /**
+   * Helper function to handle Massimo Dutti reference code lookup (with LIMIT 1 for duplicates)
+   * @param {string} refCode - Reference code in format XXXX/XXX/XXX
+   * @returns {Promise<Object>} Product lookup result
+   */
+  async handleMassimoDuttiRefCode(refCode) {
+    logger.info(`[MASSIMODUTTI] handleMassimoDuttiRefCode - refCode: ${refCode}`);
+
+    return new Promise((resolve, reject) => {
+      const query = "SELECT * FROM massimodutti_unique_product_details WHERE reference = ? ORDER BY id ASC LIMIT 1";
+
+      db.get(query, [refCode], (err, product) => {
+        if (err) {
+          logger.error("[MASSIMODUTTI] Database error for ref code:", err);
+          return reject(err);
+        }
+
+        if (!product) {
+          logger.error(`[MASSIMODUTTI] No product found with reference: ${refCode}`);
+          return resolve({
+            success: false,
+            message: `Product with reference ${refCode} not found`,
+            productId: null
+          });
+        }
+
+        logger.info(`[MASSIMODUTTI] Found product by reference: ${product.name}, ID: ${product.product_id} (first match from duplicates)`);
+
+        resolve({
+          success: true,
+          product: product,
+          productId: product.product_id
+        });
+      });
+    });
+  }
+
+  /**
+   * Helper function to handle Massimo Dutti product lookup by product ID
+   * @param {string} productId - Product ID extracted from URL
+   * @returns {Promise<Object>} Product lookup result
+   */
+  async handleMassimoDuttiProductLookup(productId) {
+    logger.info("[MASSIMODUTTI] handleMassimoDuttiProductLookup - productId: ${productId}");
+
+    return new Promise(async (resolve, reject) => {
+      const query = "SELECT * FROM massimodutti_unique_product_details WHERE product_id = ?";
+
+      db.get(query, [productId], async (err, product) => {
+        if (err) {
+          logger.error("[MASSIMODUTTI] Database error:", err);
+          return reject(err);
+        }
+
+        if (!product) {
+          logger.info("📡 [MASSIMODUTTI] Product not in DB, attempting API fetch...");
+
+          try {
+            const apiProduct = await this.fetchProductFromAPI("massimodutti", productId, null);
+
+            if (apiProduct) {
+              logger.info(`✅ [MASSIMODUTTI] Product ${productId} fetched from API`);
+
+              db.get(query, [productId], (err2, reloadedProduct) => {
+                if (err2) {
+                  logger.error("[MASSIMODUTTI] Error reloading product:", err2);
+                  return reject(err2);
+                }
+
+                if (reloadedProduct) {
+                  logger.info("[MASSIMODUTTI] Found product after API fetch: ${reloadedProduct.name}");
+                  return resolve({
+                    success: true,
+                    product: reloadedProduct,
+                    productId: reloadedProduct.product_id
+                  });
+                } else {
+                  return resolve({
+                    success: false,
+                    message: `Product ${productId} fetched but not found in DB after save`,
+                    productId: null
+                  });
+                }
+              });
+            } else {
+              logger.error("[MASSIMODUTTI] API fetch failed for ${productId}");
+              return resolve({
+                success: false,
+                message: `Product with ID ${productId} not found in database or API`,
+                productId: null
+              });
+            }
+          } catch (apiError) {
+            logger.error("[MASSIMODUTTI] API fetch error:", apiError.message);
+            return resolve({
+              success: false,
+              message: `Failed to fetch product from API: ${apiError.message}`,
+              productId: null
+            });
+          }
+        } else {
+          logger.info("[MASSIMODUTTI] Found product: ${product.name}, ID: ${product.product_id}");
+          resolve({
+            success: true,
+            product: product,
+            productId: product.product_id
+          });
+        }
+      });
+    });
+  }
+
+  /**
+   * Helper function to handle Pull&Bear reference code lookup with validation
+   * @param {string} refCode - Reference code (7683329 or 7683329800)
+   * @returns {Promise<Object>} Product lookup result
+   */
+  async handlePullAndBearRefCode(refCode) {
+    logger.info(`[PULLANDBEAR] handlePullAndBearRefCode - refCode: ${refCode}`);
+
+    return new Promise((resolve, reject) => {
+      // Remove slashes if present: "7683/329" -> "7683329"
+      const cleanRef = refCode.replace(/\//g, "");
+
+      // Check if reference is complete (has color code)
+      if (cleanRef.length <= 7) {
+        // Base product code only (no color code)
+        logger.warn(`[PULLANDBEAR] Incomplete reference: ${cleanRef} (missing color code)`);
+        return resolve({
+          success: false,
+          needsColorSelection: true,
+          message: `Reference code ${refCode} is incomplete. Please provide the color code.
+
+Example: If you want the black (800) version, use: ${cleanRef}800
+
+Available colors for this product can be found at:
+https://www.pullandbear.com/tr/product-l0${cleanRef}`,
+          baseCode: cleanRef
+        });
+      }
+
+      // Try exact match first
+      const exactQuery = "SELECT * FROM pullandbear_unique_product_details WHERE reference = ? ORDER BY id ASC LIMIT 1";
+
+      db.get(exactQuery, [cleanRef], (err, product) => {
+        if (err) {
+          logger.error("[PULLANDBEAR] Database error for ref code:", err);
+          return reject(err);
+        }
+
+        if (product) {
+          logger.info(`[PULLANDBEAR] Found product by exact reference: ${product.name}, ID: ${product.product_id}`);
+          return resolve({
+            success: true,
+            product: product,
+            productId: product.product_id
+          });
+        }
+
+        // Exact match failed, try prefix match (LIKE) for 10+ character references
+        if (cleanRef.length >= 10) {
+          logger.info(`[PULLANDBEAR] Exact match failed, trying prefix match for ${cleanRef}...`);
+
+          const likeQuery = "SELECT * FROM pullandbear_unique_product_details WHERE reference LIKE ? ORDER BY id ASC LIMIT 1";
+
+          db.get(likeQuery, [cleanRef + '%'], (err2, productLike) => {
+            if (err2) {
+              logger.error("[PULLANDBEAR] Database error for LIKE query:", err2);
+              return reject(err2);
+            }
+
+            if (!productLike) {
+              logger.error(`[PULLANDBEAR] No product found with reference (exact or prefix): ${cleanRef}`);
+              return resolve({
+                success: false,
+                message: `Product with reference ${cleanRef} not found`,
+                productId: null
+              });
+            }
+
+            logger.info(`[PULLANDBEAR] Found product by prefix match: ${productLike.name}, reference: ${productLike.reference}, ID: ${productLike.product_id}`);
+
+            resolve({
+              success: true,
+              product: productLike,
+              productId: productLike.product_id
+            });
+          });
+        } else {
+          // Reference too short and no exact match
+          logger.error(`[PULLANDBEAR] No product found with reference: ${cleanRef}`);
+          return resolve({
+            success: false,
+            message: `Product with reference ${cleanRef} not found`,
+            productId: null
+          });
+        }
+      });
+    });
+  }
+
+  /**
+   * Helper function to handle Pull&Bear product lookup by product ID
+   * @param {string} productId - Product ID extracted from URL (pelement)
+   * @returns {Promise<Object>} Product lookup result
+   */
+  async handlePullAndBearProductLookup(productId) {
+    logger.info(`[PULLANDBEAR] handlePullAndBearProductLookup - productId: ${productId}`);
+
+    return new Promise(async (resolve, reject) => {
+      const query = "SELECT * FROM pullandbear_unique_product_details WHERE product_id = ?";
+
+      db.get(query, [productId], async (err, product) => {
+        if (err) {
+          logger.error("[PULLANDBEAR] Database error:", err);
+          return reject(err);
+        }
+
+        if (!product) {
+          logger.info("📡 [PULLANDBEAR] Product not in DB, attempting API fetch...");
+
+          try {
+            const apiProduct = await this.fetchProductFromAPI("pullandbear", productId, null);
+
+            if (apiProduct) {
+              logger.info(`✅ [PULLANDBEAR] Product ${productId} fetched from API`);
+
+              db.get(query, [productId], (err2, reloadedProduct) => {
+                if (err2) {
+                  logger.error("[PULLANDBEAR] Error reloading product:", err2);
+                  return reject(err2);
+                }
+
+                if (reloadedProduct) {
+                  logger.info(`[PULLANDBEAR] Found product after API fetch: ${reloadedProduct.name}`);
+                  return resolve({
+                    success: true,
+                    product: reloadedProduct,
+                    productId: reloadedProduct.product_id
+                  });
+                } else {
+                  return resolve({
+                    success: false,
+                    message: `Product ${productId} fetched but not found in DB after save`,
+                    productId: null
+                  });
+                }
+              });
+            } else {
+              logger.error(`[PULLANDBEAR] API fetch failed for ${productId}`);
+              return resolve({
+                success: false,
+                message: `Product with ID ${productId} not found in database or API`,
+                productId: null
+              });
+            }
+          } catch (apiError) {
+            logger.error("[PULLANDBEAR] API fetch error:", apiError.message);
+            return resolve({
+              success: false,
+              message: `Failed to fetch product from API: ${apiError.message}`,
+              productId: null
+            });
+          }
+        } else {
+          logger.info(`[PULLANDBEAR] Found product: ${product.name}, ID: ${product.product_id}`);
+          resolve({
+            success: true,
+            product: product,
+            productId: product.product_id
+          });
+        }
+      });
+    });
+  }
+
+  /**
+   * Helper function to handle Oysho reference code lookup (with LIMIT 1 for duplicates)
+   * @param {string} refCode - Reference code in format XXXX/XXX/XXX
+   * @returns {Promise<Object>} Product lookup result
+   */
+  async handleOyshoRefCode(refCode) {
+    logger.info(`[OYSHO] handleOyshoRefCode - refCode: ${refCode}`);
+
+    return new Promise((resolve, reject) => {
+      const query = "SELECT * FROM oysho_unique_product_details WHERE reference = ? ORDER BY id ASC LIMIT 1";
+
+      db.get(query, [refCode], (err, product) => {
+        if (err) {
+          logger.error("[OYSHO] Database error for ref code:", err);
+          return reject(err);
+        }
+
+        if (!product) {
+          logger.error(`[OYSHO] No product found with reference: ${refCode}`);
+          return resolve({
+            success: false,
+            message: `Product with reference ${refCode} not found`,
+            productId: null
+          });
+        }
+
+        logger.info(`[OYSHO] Found product by reference: ${product.name}, ID: ${product.product_id} (first match from duplicates)`);
+
+        resolve({
+          success: true,
+          product: product,
+          productId: product.product_id
+        });
+      });
+    });
+  }
+
+  /**
+   * Helper function to handle Oysho product lookup by product ID
+   * @param {string} productId - Product ID extracted from URL (pelement parameter)
+   * @returns {Promise<Object>} Product lookup result
+   */
+  async handleOyshoProductLookup(productId) {
+    logger.info(`[OYSHO] handleOyshoProductLookup - productId: ${productId}`);
+
+    return new Promise(async (resolve, reject) => {
+      const query = "SELECT * FROM oysho_unique_product_details WHERE product_id = ?";
+
+      db.get(query, [productId], async (err, product) => {
+        if (err) {
+          logger.error("[OYSHO] Database error:", err);
+          return reject(err);
+        }
+
+        if (!product) {
+          logger.info("📡 [OYSHO] Product not in DB, attempting API fetch...");
+
+          try {
+            const apiProduct = await this.fetchProductFromAPI("oysho", productId, null);
+
+            if (apiProduct) {
+              logger.info(`✅ [OYSHO] Product ${productId} fetched from API`);
+
+              db.get(query, [productId], (err2, reloadedProduct) => {
+                if (err2) {
+                  logger.error("[OYSHO] Error reloading product:", err2);
+                  return reject(err2);
+                }
+
+                if (reloadedProduct) {
+                  logger.info(`[OYSHO] Found product after API fetch: ${reloadedProduct.name}`);
+                  return resolve({
+                    success: true,
+                    product: reloadedProduct,
+                    productId: reloadedProduct.product_id
+                  });
+                } else {
+                  return resolve({
+                    success: false,
+                    message: `Product ${productId} fetched but not found in DB after save`,
+                    productId: null
+                  });
+                }
+              });
+            } else {
+              logger.error(`[OYSHO] API fetch failed for ${productId}`);
+              return resolve({
+                success: false,
+                message: `Product with ID ${productId} not found in database or API`,
+                productId: null
+              });
+            }
+          } catch (apiError) {
+            logger.error("[OYSHO] API fetch error:", apiError.message);
+            return resolve({
+              success: false,
+              message: `Failed to fetch product from API: ${apiError.message}`,
+              productId: null
+            });
+          }
+        } else {
+          logger.info(`[OYSHO] Found product: ${product.name}, ID: ${product.product_id}`);
+          resolve({
+            success: true,
+            product: product,
+            productId: product.product_id
+          });
+        }
+      });
+    });
+  }
+
+  /**
+   * Helper function to handle H&M product lookup by product ID
+   * @param {string} productId - Product ID extracted from URL
+   * @returns {Promise<Object>} Product lookup result
+   */
+  async handleHMProductLookup(productId) {
+    logger.info(`[HM] handleHMProductLookup - productId: ${productId}`);
+
+    return new Promise((resolve, reject) => {
+      const query = "SELECT * FROM hm_products WHERE product_id = ?";
+
+      db.get(query, [productId], (err, product) => {
+        if (err) {
+          logger.error("[HM] Database error:", err);
+          return reject(err);
+        }
+
+        if (!product) {
+          logger.error(`[HM] Product ${productId} not found in catalog`);
+          return resolve({
+            success: false,
+            message: `Bu H&M ürünü kataloğumuzda bulunamadı. Lütfen farklı bir ürün deneyin.`,
+            productId: null
+          });
+        }
+
+        logger.info(`[HM] Found product: ${product.name}, ID: ${product.product_id}`);
         resolve({
           success: true,
           product: product,
@@ -759,8 +1187,12 @@ class TrackingService {
         if (brandName === "zara") {
           salePriveColumn = "p.sale_price";
           currencyColumn = "'TL' as currency"; // Zara doesn't have currency column
+        } else if (brandName === "hm") {
+          // H&M doesn't have old_price or sale_price column
+          salePriveColumn = "NULL as sale_price";
+          currencyColumn = "p.currency";
         } else {
-          // Bershka and Stradivarius use 'old_price'
+          // Bershka, Stradivarius, etc. use 'old_price'
           salePriveColumn = "p.old_price as sale_price";
           currencyColumn = "p.currency";
         }
@@ -788,6 +1220,7 @@ class TrackingService {
           FROM user_tracked_products utp
           JOIN ${tableName} p ON utp.product_id = p.product_id
           WHERE utp.user_id = ? AND utp.brand = '${brandName}'
+          GROUP BY utp.id
         `);
       });
 
@@ -818,94 +1251,107 @@ class TrackingService {
       query += ` ORDER BY ${validatedSortBy} ${validatedSortOrder}`;
 
       // Parameters (userId for each brand in UNION)
+      // Dynamic parameter generation based on number of supported brands
+      const userIdParams = this.supportedBrands.map(() => userId);
       const params = brand
-        ? [userId, userId, userId, brand.toLowerCase()]
-        : [userId, userId, userId];
+        ? [...userIdParams, brand.toLowerCase()]
+        : userIdParams;
 
-      db.all(query, params, (err, rows) => {
+      // Debug logging
+      logger.debug(`[TRACKING] Query params count: ${params.length}, supportedBrands count: ${this.supportedBrands.length}`);
+      logger.debug(`[TRACKING] Query: ${query.substring(0, 500)}...`);
+
+      db.all(query, params, async (err, rows) => {
         if (err) {
           logger.error("Error fetching user tracked products:", err);
           return reject(err);
         }
 
-        // Format products (optimized - no formatProduct() overhead)
-        const trackedProducts = rows.map((row) => {
-          let customSettings = {};
-          if (row.custom_settings) {
-            try {
-              customSettings =
-                typeof row.custom_settings === "string"
-                  ? JSON.parse(row.custom_settings)
-                  : row.custom_settings;
-            } catch (e) {
-              logger.error(
-                "Invalid JSON in custom_settings:",
-                row.custom_settings
-              );
+        try {
+          // Format products (optimized - no formatProduct() overhead)
+          const trackedProducts = rows.map((row) => {
+            let customSettings = {};
+            if (row.custom_settings) {
+              try {
+                customSettings =
+                  typeof row.custom_settings === "string"
+                    ? JSON.parse(row.custom_settings)
+                    : row.custom_settings;
+              } catch (e) {
+                logger.error(
+                  "Invalid JSON in custom_settings:",
+                  row.custom_settings
+                );
+              }
             }
-          }
 
-          // Convert image URL to proxied format
-          const proxyImageUrl = row.image_url
-            ? `/api/image-proxy?url=${encodeURIComponent(row.image_url)}`
-            : null;
+            // Convert image URL to proxied format
+            const proxyImageUrl = row.image_url
+              ? `/api/image-proxy?url=${encodeURIComponent(row.image_url)}`
+              : null;
 
-          return {
-            id: row.product_id,
-            brand: row.brand,
-            productId: row.product_id,
-            title: row.name,
-            name: row.name,
-            price: row.price,
-            salePrice: row.sale_price,
-            currency: row.currency || 'TL',
-            formattedPrice: row.price
-              ? (row.price / 100).toLocaleString("tr-TR", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                }) + " TL"
-              : "Fiyat yok",
-            formattedSalePrice: row.sale_price
-              ? (row.sale_price / 100).toLocaleString("tr-TR", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                }) + " " + (row.currency || 'TL')
-              : null,
-            image: proxyImageUrl,
-            imageUrl: proxyImageUrl,
-            url: row.product_url,
-            productUrl: row.product_url,
-            availability: row.availability,
-            inStock: row.availability === 'in_stock' || row.availability === 'available',
-            lastUpdated: row.product_last_updated,
-            tracking: {
-              id: row.id,
-              tracking_started_at: row.tracking_started_at,
-              last_checked: row.last_checked,
-              notification_enabled: !!row.notification_enabled,
-              price_alert_threshold: row.price_alert_threshold,
-              stock_alert: !!row.stock_alert,
-              custom_settings: customSettings,
-            },
+            const productData = {
+              id: row.product_id,
+              brand: row.brand,
+              productId: row.product_id,
+              title: row.name,
+              name: row.name,
+              price: row.price,
+              salePrice: row.sale_price,
+              currency: row.currency || 'TL',
+              formattedPrice: row.price
+                ? (row.price / 100).toLocaleString("tr-TR", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  }) + " TL"
+                : "Fiyat yok",
+              formattedSalePrice: row.sale_price
+                ? (row.sale_price / 100).toLocaleString("tr-TR", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  }) + " " + (row.currency || 'TL')
+                : null,
+              image: proxyImageUrl,
+              imageUrl: proxyImageUrl,
+              url: row.product_url,
+              productUrl: row.product_url,
+              availability: row.availability,
+              inStock: row.availability === 'in_stock' || row.availability === 'available',
+              lastUpdated: row.product_last_updated,
+              tracking: {
+                id: row.id,
+                tracking_started_at: row.tracking_started_at,
+                last_checked: row.last_checked,
+                notification_enabled: !!row.notification_enabled,
+                price_alert_threshold: row.price_alert_threshold,
+                stock_alert: !!row.stock_alert,
+                custom_settings: customSettings,
+              },
+            };
+
+            return productData;
+          });
+
+          const result = {
+            success: true,
+            products: trackedProducts,
+            count: trackedProducts.length,
+            maxAllowed: this.maxTrackedPerUser,
+            fromCache: false,
           };
-        });
 
-        const result = {
-          success: true,
-          products: trackedProducts,
-          count: trackedProducts.length,
-          maxAllowed: this.maxTrackedPerUser,
-          fromCache: false,
-        };
+          // 4. Cache the result (full result, not filtered)
+          cacheManager.setCachedUserTracking(userId, result);
 
-        // 3. Cache the result (full result, not filtered)
-        cacheManager.setCachedUserTracking(userId, result);
+          logger.info(
+            `✅ Retrieved ${trackedProducts.length} tracked products for user ${userId}`
+          );
 
-        logger.info(
-          `✅ Retrieved ${trackedProducts.length} tracked products for user ${userId}`
-        );
-
-        resolve(result);
+          resolve(result);
+        } catch (asyncError) {
+          logger.error("Error in async discount check:", asyncError);
+          reject(asyncError);
+        }
       });
     });
   }
@@ -1223,7 +1669,40 @@ class TrackingService {
             productId = refResult.productId;
             logger.info(`[TRACKING] Found Stradivarius product via reference: ${actualProduct.name}`);
           } else {
-            throw new Error(`Reference code ${productUrl.trim()} not found in Zara, Bershka or Stradivarius databases`);
+            // Try Massimo Dutti
+            refResult = await this.handleMassimoDuttiRefCode(productUrl.trim());
+
+            if (refResult.success) {
+              brand = "massimodutti";
+              actualProduct = refResult.product;
+              productId = refResult.productId;
+              logger.info(`[TRACKING] Found Massimo Dutti product via reference: ${actualProduct.name}`);
+            } else {
+              // Try Pull&Bear
+              refResult = await this.handlePullAndBearRefCode(productUrl.trim());
+
+              if (refResult.success) {
+                brand = "pullandbear";
+                actualProduct = refResult.product;
+                productId = refResult.productId;
+                logger.info(`[TRACKING] Found Pull&Bear product via reference: ${actualProduct.name}`);
+              } else if (refResult.needsColorSelection) {
+                // Special case: incomplete reference (missing color code)
+                throw new Error(refResult.message);
+              } else {
+                // Try Oysho
+                refResult = await this.handleOyshoRefCode(productUrl.trim());
+
+                if (refResult.success) {
+                  brand = "oysho";
+                  actualProduct = refResult.product;
+                  productId = refResult.productId;
+                  logger.info(`[TRACKING] Found Oysho product via reference: ${actualProduct.name}`);
+                } else {
+                  throw new Error(`Reference code ${productUrl.trim()} not found in Zara, Bershka, Stradivarius, Massimo Dutti, Pull&Bear or Oysho databases`);
+                }
+              }
+            }
           }
         }
       }
@@ -1347,12 +1826,168 @@ class TrackingService {
         if (!customSettings) customSettings = {};
         customSettings.productCode = productCode;
       }
+    } else if (productUrl.includes("massimodutti.com")) {
+      brand = "massimodutti";
+      logger.info("[TRACKING] Processing Massimo Dutti URL");
+
+      // Massimo Dutti URLs typically have product ID in path like /product/1234567
+      const productMatch = productUrl.match(/pelement=(\d+)/);
+      if (productMatch) {
+        const extractedId = productMatch[1];
+        logger.info(
+          ` [TRACKING] Extracted Massimo Dutti product ID from product URL: ${extractedId}`
+        );
+
+        // Use Massimo Dutti lookup logic
+        const massimoResult = await this.handleMassimoDuttiProductLookup(extractedId);
+
+        if (!massimoResult.success) {
+          throw new Error(massimoResult.message);
+        }
+
+        actualProduct = massimoResult.product;
+        productId = massimoResult.productId;
+
+        logger.info("[TRACKING] Found Massimo Dutti product: ${actualProduct.name}, ID: ${productId}");
+      } else {
+        logger.info(
+          ` [TRACKING] Could not extract Massimo Dutti product ID - no product ID found in URL: ${productUrl}`
+        );
+        logger.info(
+          ` [TRACKING] Massimo Dutti URLs must contain /product/ID parameter`
+        );
+        throw new Error("Could not extract Massimo Dutti product ID from URL");
+      }
+
+      // Extract colorId for customSettings (info only, no matching needed)
+      const massimoColorMatch = productUrl.match(/colorId=(\d+)/);
+      if (massimoColorMatch) {
+        colorId = massimoColorMatch[1];
+        logger.info(
+          ` [TRACKING] Extracted Massimo Dutti color ID: ${colorId}`
+        );
+      }
+    } else if (productUrl.includes("pullandbear.com")) {
+      brand = "pullandbear";
+      logger.info("[TRACKING] Processing Pull&Bear URL");
+
+      // Extract base product code from URL: -l07152384 -> 7152384
+      const baseCodeMatch = productUrl.match(/[\/-]l0?(\d+)/);
+      // Extract color code: cS=802 -> 802
+      const colorCodeMatch = productUrl.match(/[cC][sS]=(\d+)/);
+
+      if (baseCodeMatch && colorCodeMatch) {
+        const baseCode = baseCodeMatch[1];
+        const colorCode = colorCodeMatch[1];
+        const reference = baseCode + colorCode; // 7152384 + 802 = 7152384802
+
+        logger.info(
+          ` [TRACKING] Extracted Pull&Bear base code: ${baseCode}, color: ${colorCode}, reference: ${reference}`
+        );
+
+        // Use reference code lookup
+        const pullResult = await this.handlePullAndBearRefCode(reference);
+
+        if (!pullResult.success) {
+          throw new Error(pullResult.message);
+        }
+
+        actualProduct = pullResult.product;
+        productId = pullResult.productId;
+        colorId = colorCode;
+
+        logger.info(`[TRACKING] Found Pull&Bear product: ${actualProduct.name}, ID: ${productId}`);
+      } else {
+        logger.info(
+          ` [TRACKING] Could not extract Pull&Bear reference - missing base code or color in URL: ${productUrl}`
+        );
+        logger.info(
+          ` [TRACKING] Pull&Bear URLs must contain /l0XXXXXXX and cS=XXX parameters`
+        );
+        throw new Error("Could not extract Pull&Bear reference from URL");
+      }
+
+      // Extract pelement for additional info
+      const pelementMatch = productUrl.match(/pelement=(\d+)/);
+      if (pelementMatch) {
+        logger.info(
+          ` [TRACKING] Pull&Bear pelement (bundle ID): ${pelementMatch[1]}`
+        );
+      }
+    } else if (productUrl.includes("oysho.com")) {
+      brand = "oysho";
+      logger.info("[TRACKING] Processing Oysho URL");
+
+      // Oysho uses pelement parameter like Stradivarius/Massimo Dutti
+      const pelementMatch = productUrl.match(/pelement=(\d+)/);
+      if (pelementMatch) {
+        const extractedId = pelementMatch[1];
+        logger.info(
+          ` [TRACKING] Extracted Oysho product ID from pelement: ${extractedId}`
+        );
+
+        // Use Oysho lookup logic
+        const oyshoResult = await this.handleOyshoProductLookup(extractedId);
+
+        if (!oyshoResult.success) {
+          throw new Error(oyshoResult.message);
+        }
+
+        actualProduct = oyshoResult.product;
+        productId = oyshoResult.productId;
+
+        logger.info(`[TRACKING] Found Oysho product: ${actualProduct.name}, ID: ${productId}`);
+      } else {
+        logger.info(
+          ` [TRACKING] Could not extract Oysho product ID - no pelement parameter found in URL: ${productUrl}`
+        );
+        logger.info(
+          ` [TRACKING] Oysho URLs must contain pelement=ID parameter`
+        );
+        throw new Error("Could not extract Oysho product ID from URL");
+      }
+
+      // Extract colorId for customSettings (info only, no matching needed)
+      const oyshoColorMatch = productUrl.match(/colorId=(\d+)/);
+      if (oyshoColorMatch) {
+        colorId = oyshoColorMatch[1];
+        logger.info(
+          ` [TRACKING] Extracted Oysho color ID: ${colorId}`
+        );
+      }
+    } else if (productUrl.includes("hm.com")) {
+      brand = "hm";
+      logger.info("[TRACKING] Processing H&M URL");
+
+      // H&M URLs: https://www2.hm.com/tr_tr/productpage.1294765006.html
+      const hmProductMatch = productUrl.match(/productpage\.(\d+)\.html/);
+      if (hmProductMatch) {
+        productId = hmProductMatch[1];
+        logger.info(`[TRACKING] Extracted H&M product ID: ${productId}`);
+
+        // Lookup H&M product in database
+        const hmResult = await this.handleHMProductLookup(productId);
+
+        if (!hmResult.success) {
+          throw new Error(hmResult.message);
+        }
+
+        actualProduct = hmResult.product;
+        productId = hmResult.productId;
+
+        logger.info(`[TRACKING] Found H&M product: ${actualProduct.name}, ID: ${productId}`);
+      } else {
+        logger.info(
+          ` [TRACKING] Could not extract H&M product ID from URL: ${productUrl}`
+        );
+        throw new Error("Could not extract H&M product ID from URL");
+      }
     } else {
       logger.info(
-        ` [TRACKING] Unsupported URL - not Zara, Bershka or Stradivarius: ${productUrl}`
+        ` [TRACKING] Unsupported URL - not Zara, Bershka, Stradivarius, Massimo Dutti, Pull&Bear, Oysho or H&M: ${productUrl}`
       );
       throw new Error(
-        "Unsupported brand - only Zara, Bershka and Stradivarius URLs are supported"
+        "Unsupported brand - only Zara, Bershka, Stradivarius, Massimo Dutti, Pull&Bear, Oysho and H&M URLs are supported"
       );
     }
 
@@ -1479,7 +2114,7 @@ class TrackingService {
       productId: finalResult.product?.id,
       productName: finalResult.product?.title,
       productPrice: finalResult.product?.formattedPrice,
-      trackingUrl: finalResult.trackingUrl
+      trackingUrl: finalResult.trackingUrl,
     });
 
     return finalResult;
@@ -1521,7 +2156,11 @@ class TrackingService {
         });
 
         findQuery = unionQueries.join(" UNION ") + " LIMIT 1";
-        params = [userId, productId, productId, productId, userId, productId, productId, productId, userId, productId, productId, productId];
+        // Dynamic parameter generation: each brand query needs 4 params (userId, productId x3)
+        params = [];
+        this.supportedBrands.forEach(() => {
+          params.push(userId, productId, productId, productId);
+        });
       }
 
       db.get(findQuery, params, (err, record) => {
@@ -1727,6 +2366,27 @@ class TrackingService {
           break;
         }
 
+        case "massimodutti": {
+          const MassimoDuttiService = require("./massimodutti.service");
+          const service = new MassimoDuttiService();
+          result = await service.fetchSingleProduct(productId, colorId);
+          break;
+        }
+
+        case "pullandbear": {
+          const PullAndBearService = require("./pullandbear.service");
+          const service = new PullAndBearService();
+          result = await service.fetchSingleProduct(productId, colorId);
+          break;
+        }
+
+        case "oysho": {
+          const OyshoService = require("./oysho.service");
+          const service = new OyshoService();
+          result = await service.fetchSingleProduct(productId, colorId);
+          break;
+        }
+
         case "zara":
           logger.warn(`⚠️ [API] Zara products cannot be fetched individually - pre-scraping required`);
           return null;
@@ -1751,6 +2411,21 @@ class TrackingService {
       logger.error(`❌ [API] Error fetching ${brand} product ${productId} (${elapsed}ms):`, error.message);
       throw error;
     }
+  }
+
+  /**
+   * Format price (from cents to TL)
+   * @param {number} priceInCents - Price in cents
+   * @returns {string} Formatted price string
+   */
+  _formatPrice(priceInCents) {
+    if (!priceInCents) return "Fiyat bilgisi yok";
+
+    const price = priceInCents / 100;
+    return `${price.toLocaleString("tr-TR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })} TL`;
   }
 }
 

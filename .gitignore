@@ -28,3 +28,10 @@ logs/
 backups/
 *.db.backup
 *-backup-*.db
+INTERVIEW_PREPARATION.md
+
+# Brand Config Files (contains API keys and sensitive data)
+config/*.config.js
+!config/environment.js
+!config/database.js
+!config/constants.js

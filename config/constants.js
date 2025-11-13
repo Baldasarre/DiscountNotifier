@@ -15,7 +15,7 @@ module.exports = {
   // Rate Limiting
   RATE_LIMIT: {
     WINDOW_MS: 15 * 60 * 1000,  // 15 minutes
-    MAX_REQUESTS: 150,           // Max requests per window
+    MAX_REQUESTS: 1000,          // Max requests per window (increased for development)
   },
 
   // Compression Settings
