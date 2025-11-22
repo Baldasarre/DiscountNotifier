@@ -1,4 +1,5 @@
 const axios = require("axios");
+const https = require("https");
 const { createServiceLogger } = require("../utils/logger");
 
 const logger = createServiceLogger("image-proxy");
@@ -54,6 +55,9 @@ class ImageProxyService {
       timeout: 15000, // Increased timeout to 15s
       maxRedirects: 5,
       validateStatus: (status) => status >= 200 && status < 300,
+      httpsAgent: new https.Agent({
+        rejectUnauthorized: false
+      })
     });
 
     const duration = Date.now() - startTime;
