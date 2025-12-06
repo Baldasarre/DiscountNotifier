@@ -483,7 +483,7 @@ router.get("/api/users", isAdmin, (req, res) => {
       createdAt,
       lastLoginAt,
       brands,
-      gender
+      category
     FROM users
     WHERE verified = 1
     ORDER BY createdAt ASC

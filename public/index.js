@@ -121,7 +121,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         });
         const userInfo = await userInfoRes.json();
 
-        if (userInfo.success && userInfo.gender) {
+        if (userInfo.success && userInfo.category) {
           DOMUtils.setText("signInButton", SUCCESS_MESSAGES.REDIRECTING);
           setTimeout(() => {
             window.location.href = ROUTES.DASHBOARD;
@@ -244,4 +244,3 @@ function checkAuthStatus() {
     showErrMessage(errorMessage);
   }
 }
-

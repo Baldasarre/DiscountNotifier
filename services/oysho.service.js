@@ -38,7 +38,7 @@ class OyshoService {
           category_id TEXT UNIQUE NOT NULL,
           category_name TEXT NOT NULL,
           category_url TEXT,
-          gender TEXT,
+          category TEXT,
           redirect_category_id TEXT,
           seo_keyword TEXT,
           path TEXT,
@@ -157,7 +157,7 @@ class OyshoService {
             category_id: category.id,
             category_name: category.name,
             category_url: category.categoryUrl || "",
-            gender: category.gender || "unknown",
+            category: category.gender || "unknown",
             redirect_category_id: category.redirectCategoryId || null,
             seo_keyword: category.seoKeyword || "",
             path: path + "/" + category.name,
@@ -528,7 +528,7 @@ class OyshoService {
 
       const insertQuery = `
         INSERT OR REPLACE INTO oysho_categories (
-          category_id, category_name, category_url, gender, redirect_category_id,
+          category_id, category_name, category_url, category, redirect_category_id,
           seo_keyword, path, product_count, last_updated
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       `;
@@ -545,7 +545,7 @@ class OyshoService {
               category.category_id,
               category.category_name,
               category.category_url,
-              category.gender,
+              category.category,
               category.redirect_category_id,
               category.seo_keyword,
               category.path,

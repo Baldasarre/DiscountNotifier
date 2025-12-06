@@ -122,13 +122,13 @@ router.post("/verify-code", (req, res) => {
 
 router.post("/update-user", authenticate, (req, res) => {
   const { email } = req.user;
-  const { gender, brands } = req.body;
-  if (!gender) return res.status(400).json({ error: "Eksik bilgi var." });
+  const { category, brands } = req.body;
+  if (!category) return res.status(400).json({ error: "Eksik bilgi var." });
 
   const brandsJson = JSON.stringify(brands || []);
-  const updateSql = `UPDATE users SET gender = ?, brands = ? WHERE email = ?`;
+  const updateSql = `UPDATE users SET category = ?, brands = ? WHERE email = ?`;
 
-  db.run(updateSql, [gender, brandsJson, email], (err) => {
+  db.run(updateSql, [category, brandsJson, email], (err) => {
     if (err) return res.status(500).json({ error: "Veri güncellenemedi." });
     res.json({ success: true, message: "Bilgiler başarıyla güncellendi." });
   });
@@ -137,7 +137,7 @@ router.post("/update-user", authenticate, (req, res) => {
 router.get("/user-info", authenticate, (req, res) => {
   const { user } = req;
   const brands = user.brands ? JSON.parse(user.brands) : [];
-  res.json({ success: true, gender: user.gender, brands });
+  res.json({ success: true, category: user.category, brands });
 });
 
 router.get("/check-session", (req, res) => {

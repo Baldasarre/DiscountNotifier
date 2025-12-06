@@ -48,7 +48,7 @@ router.get(
       const hasBrands =
         user.brands && user.brands !== "null" && user.brands !== "[]";
 
-      if (user.gender && hasBrands) {
+      if (user.category && hasBrands) {
         logger.info("User has complete profile, redirecting to dashboard");
         res.redirect("/dashboard");
       } else {

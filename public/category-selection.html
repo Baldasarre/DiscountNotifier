@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-T" />
+    <title>kunto - Kategori Seçimi</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@400;500;600&family=Quicksand:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="category-selection.css" />
+  </head>
+  <body>
+    <div id="userPageLogo"><img id="logoItSelf" src="Images/Logo1.png" alt="" /></div>
+    
+    <div class="categoryDiv">
+      <div id="welcomeMesDiv">
+        <h1 id="welcomeMessage">
+          Hangi kategorileri takip etmek istersin?
+        </h1>
+      </div>
+      <div id="categoryButtonsDiv">
+        <label class="checkboxCategory">
+          <input class="checkboxCategoryInput" type="checkbox" name="category" value="female"/>
+          Kadın
+        </label>
+        <label class="checkboxCategory">
+          <input class="checkboxCategoryInput" type="checkbox" name="category" value="male"/>
+          Erkek
+        </label>
+        <label class="checkboxCategory">
+          <input class="checkboxCategoryInput" type="checkbox" name="category" value="both"/>
+          Hepsi
+        </label>
+      </div>
+    </div>
+    
+    <footer class="footer">
+      <div class="footerDiv">
+        <p class="footerText">Tüm hakları saklıdır © 2025</p>
+        <span class="footer-separator">|</span>
+        <a href="/legal" class="footerLink">Yasal Uyarı</a>
+      </div>
+    </footer>
+    
+    <script type="module" src="category-selection.js"></script>
+  </body>
+</html>

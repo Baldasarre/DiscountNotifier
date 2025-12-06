@@ -37,7 +37,7 @@ const menuDropdown = document.getElementById("menuDropdown");
 let brandCheckboxes = null;
 
 const email = StorageUtils.get("userEmail");
-let selectedGender = null;
+let selectedCategory = null;
 
 function debounce(func, delay) {
   let timeout;
@@ -202,15 +202,15 @@ function addBrandCheckboxListeners() {
   });
 }
 
-async function savePreferences(isGenderSelection = false) {
-  if (!isGenderSelection && !selectedGender) return;
+async function savePreferences(isCategorySelection = false) {
+  if (!isCategorySelection && !selectedCategory) return;
 
   const selectedBrands = [...document.querySelectorAll(".checkboxBrand")]
     .filter((cb) => cb.checked)
     .map((cb) => cb.value);
 
   const payload = {
-    gender: selectedGender,
+    category: selectedCategory,
     brands: selectedBrands,
   };
 
@@ -322,11 +322,11 @@ async function initializePage() {
     console.log("API Response data:", data);
 
     if (data.success) {
-      selectedGender = data.gender;
+      selectedCategory = data.category;
 
-      if (!selectedGender) {
+      if (!selectedCategory) {
         console.log(
-          "Gender seçilmemiş, gender-selection sayfasına yönlendiriliyor..."
+          "Kategori seçilmemiş, category-selection sayfasına yönlendiriliyor..."
         );
         window.location.replace(ROUTES.CATEGORY);
         return;

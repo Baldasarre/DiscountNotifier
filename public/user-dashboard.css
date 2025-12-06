@@ -768,3 +768,16 @@ h2 {
     transform: translateX(-50%) translateY(20px);
   }
 }
+
+.footer-separator {
+  margin: 0 10px;
+}
+
+.footerLink {
+  color: #7393b3;
+  text-decoration: none;
+}
+
+.footerLink:hover {
+  text-decoration: underline;
+}

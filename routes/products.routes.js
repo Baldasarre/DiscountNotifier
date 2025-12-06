@@ -16,7 +16,7 @@ const csrfProtection = csrf({ cookie: true });
 
 router.get("/", async (req, res) => {
   try {
-    const { page = 1, limit = 20, gender, search, availability } = req.query;
+    const { page = 1, limit = 20, category, search, availability } = req.query;
 
     const offset = (page - 1) * limit;
     const filters = {
@@ -25,7 +25,7 @@ router.get("/", async (req, res) => {
       brand: "zara"
     };
 
-    if (gender) filters.gender = gender;
+    if (category) filters.category = category;
     if (search) filters.search = search;
     if (availability) filters.availability = availability;
 
@@ -48,7 +48,7 @@ router.get("/", async (req, res) => {
       brand: "zara",
       limit: parseInt(limit),
       page: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
-      gender,
+      category,
       search,
       availability
     });
@@ -390,10 +390,10 @@ router.get("/zara/categories", async (req, res) => {
 
     const groupedCategories = {};
     categories.forEach((cat) => {
-      if (!groupedCategories[cat.gender]) {
-        groupedCategories[cat.gender] = [];
+      if (!groupedCategories[cat.category]) {
+        groupedCategories[cat.category] = [];
       }
-      groupedCategories[cat.gender].push({
+      groupedCategories[cat.category].push({
         id: cat.category_id,
         name: cat.category_name,
         url: cat.category_url,
@@ -438,7 +438,7 @@ router.post(
           sampleProduct: {
             name: products[0].name,
             price: products[0].price,
-            gender: products[0].gender,
+            category: products[0].category,
             category: products[0].category_name,
           },
         });

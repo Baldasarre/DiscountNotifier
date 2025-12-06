@@ -2,7 +2,7 @@ import { fetchWithCsrf } from "./apis.js";
 import { DELAYS, ROUTES, API_ENDPOINTS } from "./constants.js";
 import { DOMUtils, ErrorHandler, StorageUtils } from "./utils.js";
 
-const genderButtons = document.querySelectorAll(".checkboxGender");
+const categoryButtons = document.querySelectorAll(".checkboxCategory");
 const email = StorageUtils.get("userEmail");
 
 async function checkUserStatus() {
@@ -31,20 +31,20 @@ async function checkUserStatus() {
     const res = await fetch(API_ENDPOINTS.USER_INFO);
     const data = await res.json();
 
-    if (data.success && data.gender && !isEditing) {
-      console.log("Gender zaten seçilmiş, dashboard'a yönlendiriliyor...");
+    if (data.success && data.category && !isEditing) {
+      console.log("Kategori zaten seçilmiş, dashboard'a yönlendiriliyor...");
       window.location.replace(ROUTES.DASHBOARD);
       return;
     }
 
-    if (isEditing && data.success && data.gender) {
-      console.log("Editing mode - current gender:", data.gender);
-      const currentGenderButton = document.querySelector(
-        `input[value="${data.gender}"]`
+    if (isEditing && data.success && data.category) {
+      console.log("Editing mode - current category:", data.category);
+      const currentCategoryButton = document.querySelector(
+        `input[value="${data.category}"]`
       );
-      if (currentGenderButton) {
-        const genderElement = currentGenderButton.closest(".checkboxGender");
-        genderElement.classList.add("selected");
+      if (currentCategoryButton) {
+        const categoryElement = currentCategoryButton.closest(".checkboxCategory");
+        categoryElement.classList.add("selected");
       }
     }
 
@@ -58,40 +58,40 @@ async function checkUserStatus() {
   }
 }
 
-async function selectGender(selectedValue) {
+async function selectCategory(selectedValue) {
   try {
-    console.log("Gender seçiliyor:", selectedValue);
+    console.log("Kategori seçiliyor:", selectedValue);
 
     const response = await fetchWithCsrf(API_ENDPOINTS.UPDATE_USER, "POST", {
-      gender: selectedValue,
+      category: selectedValue,
       brands: [],
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Gender update error:", errorText);
+      console.error("Kategori güncelleme hatası:", errorText);
       throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
     const result = await response.json();
-    console.log("Gender update success:", result);
+    console.log("Kategori güncelleme başarılı:", result);
 
     document.body.classList.add("page-transition-exit-active");
 
     setTimeout(() => {
       window.location.replace(ROUTES.DASHBOARD);
-    }, DELAYS.GENDER_SELECTION);
+    }, DELAYS.CATEGORY_SELECTION);
   } catch (err) {
-    ErrorHandler.handle(err, "selectGender");
+    ErrorHandler.handle(err, "selectCategory");
     alert("Bir hata oluştu. Lütfen tekrar deneyin.");
   }
 }
 
-genderButtons.forEach((button) => {
+categoryButtons.forEach((button) => {
   button.addEventListener("click", (e) => {
     e.preventDefault();
 
-    genderButtons.forEach((btn) => {
+    categoryButtons.forEach((btn) => {
       btn.classList.remove("selected");
       btn.style.backgroundColor = "";
     });
@@ -100,10 +100,10 @@ genderButtons.forEach((button) => {
 
     const selectedValue = button.querySelector("input").value;
 
-    genderButtons.forEach((btn) => (btn.style.pointerEvents = "none"));
+    categoryButtons.forEach((btn) => (btn.style.pointerEvents = "none"));
 
     setTimeout(() => {
-      selectGender(selectedValue);
+      selectCategory(selectedValue);
     }, 200);
   });
 });

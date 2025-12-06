@@ -32,7 +32,7 @@ export async function fetchProducts(filters = {}) {
     if (filters.page) params.append("page", filters.page);
     if (filters.limit) params.append("limit", filters.limit);
 
-    if (filters.gender) params.append("gender", filters.gender);
+    if (filters.category) params.append("category", filters.category);
     if (filters.search) params.append("search", filters.search);
     if (filters.availability)
       params.append("availability", filters.availability);

@@ -149,7 +149,7 @@ class ZaraService {
 
     const stmt = db.prepare(`
             INSERT OR REPLACE INTO zara_categories (
-                category_id, category_name, category_url, gender, 
+                category_id, category_name, category_url, category, 
                 redirect_category_id, seo_keyword, last_updated
             ) VALUES (?, ?, ?, ?, ?, ?, ?)
         `);
@@ -158,12 +158,12 @@ class ZaraService {
       db.run("BEGIN TRANSACTION");
 
       this.categories.forEach((category, index) => {
-        const gender = this.mapSectionToGender(category.section);
+        const categoryValue = this.mapSectionToCategory(category.section);
 
         logger.info(`Kategori ${index + 1} kaydediliyor:`, {
           id: category.id,
           name: category.name,
-          gender: gender,
+          category: categoryValue,
           redirect_id: category.redirect_category_id,
         });
 
@@ -171,7 +171,7 @@ class ZaraService {
           category.id,
           category.name,
           category.url,
-          gender,
+          categoryValue,
           category.redirect_category_id,
           category.seo_keyword,
           new Date().toISOString(),
@@ -190,8 +190,8 @@ class ZaraService {
     stmt.finalize();
   }
 
-  mapSectionToGender(section) {
-    const genderMap = {
+  mapSectionToCategory(section) {
+    const categoryMap = {
       WOMAN: "women",
       MAN: "men",
       KID: "kids",
@@ -201,7 +201,7 @@ class ZaraService {
       TRAVEL: "travel",
     };
 
-    return genderMap[section] || "unknown";
+    return categoryMap[section] || "unknown";
   }
 
   async waitForRateLimit() {
@@ -425,7 +425,7 @@ class ZaraService {
         subfamily_name: component.subfamilyName,
         color_id: color.id,
         color_name: color.name,
-        gender: this.mapSectionToGender(category.section),
+        category: this.mapSectionToCategory(category.section),
         category_id: category.id,
         category_name: category.name,
         last_updated: new Date().toISOString(),
@@ -588,9 +588,9 @@ class ZaraService {
       let query = `SELECT * FROM zara_products WHERE 1=1`;
       const params = [];
 
-      if (filters.gender) {
-        query += ` AND section_name = ?`;
-        params.push(filters.gender.toUpperCase());
+      if (filters.category) {
+        query += ` AND category = ?`;
+        params.push(filters.category);
       }
 
       if (filters.category_id) {
@@ -644,14 +644,14 @@ class ZaraService {
     });
   }
 
-  async getCategoriesFromDatabase(gender = null) {
+  async getCategoriesFromDatabase(category = null) {
     return new Promise((resolve, reject) => {
       let query = "SELECT * FROM zara_categories WHERE is_active = 1";
       const params = [];
 
-      if (gender) {
-        query += " AND gender = ?";
-        params.push(gender);
+      if (category) {
+        query += " AND category = ?";
+        params.push(category);
       }
 
       query += " ORDER BY category_name";

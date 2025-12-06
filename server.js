@@ -145,11 +145,15 @@ app.get("/login", (req, res) => {
 });
 
 app.get("/category", (req, res) => {
-  res.sendFile(__dirname + "/public/gender-selection.html");
+  res.sendFile(__dirname + "/public/category-selection.html");
 });
 
 app.get("/dashboard", (req, res) => {
   res.sendFile(__dirname + "/public/user-dashboard.html");
+});
+
+app.get("/legal", (req, res) => {
+  res.sendFile(__dirname + "/public/legal.html");
 });
 
 const csrfProtection = csrf({ cookie: true });
